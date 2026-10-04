@@ -46,9 +46,11 @@ public final class MainView {
         Task<List<MediaItem>> task = FolderScanner.scanTask(folder);
         task.setOnSucceeded(e -> {
             List<MediaItem> items = task.getValue();
-            galleryPane.showItems(items);
+            List<id.ac.unjani.humas.sortirmedia.service.MediaGrouping.MediaGroup> groups = id.ac.unjani.humas.sortirmedia.service.MediaGrouping.group(items);
+            List<MediaItem> primaryItems = groups.stream().map(g -> g.primary()).toList();
+            galleryPane.showItems(primaryItems);
             statusBarPane.showFolderInfo(folder, items);
-            log.info("Folder dibuka: {} ({} item)", folder, items.size());
+            log.info("Folder dibuka: {} ({} item, {} grup)", folder, items.size(), groups.size());
         });
         task.setOnFailed(e -> {
             log.error("Gagal membaca folder: {}", folder, task.getException());
