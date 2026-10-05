@@ -24,7 +24,6 @@ public final class MediaTypeResolver {
     public static MediaType resolve(String extensionLowerCase) {
         String ext = extensionLowerCase == null ? "" : extensionLowerCase.toLowerCase();
         if (PHOTO_EXT.contains(ext)) return MediaType.PHOTO;
-        if (RAW_EXT.contains(ext)) return MediaType.RAW;
         if (VIDEO_EXT.contains(ext)) return MediaType.VIDEO;
         return MediaType.UNKNOWN;
     }

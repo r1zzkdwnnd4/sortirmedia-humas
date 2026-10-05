@@ -33,6 +33,7 @@ public final class GalleryPane {
 
     private Consumer<MediaItem> onItemSelected = item -> {
     };
+    private Consumer<MediaItem> onItemAction = null;
 
     public GalleryPane() {
         tilePane.setPadding(new Insets(10));
@@ -50,6 +51,10 @@ public final class GalleryPane {
     public void setOnItemSelected(Consumer<MediaItem> callback) {
         this.onItemSelected = callback;
     }
+    
+    public void setOnItemAction(Consumer<MediaItem> callback) {
+        this.onItemAction = callback;
+    }
 
     public void showItems(List<MediaItem> items) {
         tilePane.getChildren().clear();
@@ -59,6 +64,21 @@ public final class GalleryPane {
 
     public void clear() {
         tilePane.getChildren().clear();
+    }
+
+    public void scrollTo(MediaItem item) {
+        int index = -1;
+        for (int i = 0; i < tilePane.getChildren().size(); i++) {
+            if (tilePane.getChildren().get(i).getUserData() == item) {
+                index = i;
+                break;
+            }
+        }
+        if (index >= 0) {
+            double vValue = (double) index / tilePane.getChildren().size();
+            scrollPane.setVvalue(vValue);
+            tilePane.getChildren().get(index).requestFocus();
+        }
     }
 
     private StackPane buildCell(MediaItem item) {
@@ -85,11 +105,25 @@ public final class GalleryPane {
         VBox cell = new VBox(4, imageHolder, nameLabel);
         cell.setAlignment(Pos.CENTER);
         cell.setPrefWidth(CELL_SIZE);
-        cell.setOnMouseClicked(e -> onItemSelected.accept(item));
+        cell.setOnMouseClicked(e -> {
+            onItemSelected.accept(item);
+            if (e.getClickCount() == 2 && onItemAction != null) {
+                onItemAction.accept(item);
+            }
+        });
+        cell.setFocusTraversable(true);
+        cell.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER && onItemAction != null) {
+                onItemAction.accept(item);
+            }
+        });
         cell.setCursor(javafx.scene.Cursor.HAND);
+        cell.setUserData(item);
 
         loadThumbnailAsync(item, imageView, placeholder);
-        return new StackPane(cell);
+        StackPane container = new StackPane(cell);
+        container.setUserData(item);
+        return container;
     }
 
     private void loadThumbnailAsync(MediaItem item, ImageView imageView, Label placeholder) {

@@ -80,6 +80,8 @@ public final class RawPreviewProvider implements PreviewProvider {
             return cachePath;
         if (extractWith(exiftool.get(), item.getPath(), "-JpgFromRaw", cachePath))
             return cachePath;
+        if (extractWith(exiftool.get(), item.getPath(), "-ThumbnailImage", cachePath))
+            return cachePath;
 
         log.warn("exiftool tidak menemukan preview tertanam di: {}", item.getPath());
         return null;
