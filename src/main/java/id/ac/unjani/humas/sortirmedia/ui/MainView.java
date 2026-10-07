@@ -31,7 +31,15 @@ public final class MainView {
     private final BorderPane mainLayout = new BorderPane();
     private final StackPane root = new StackPane();
 
+    private List<MediaItem> allItems;
     private List<MediaItem> currentItems;
+    private Path currentFolder;
+
+    private final javafx.scene.layout.HBox filterPane = new javafx.scene.layout.HBox(10);
+    private final javafx.scene.control.CheckBox[] flagChecks = new javafx.scene.control.CheckBox[5];
+    private final javafx.scene.control.CheckBox unflaggedCheck = new javafx.scene.control.CheckBox("Belum Diflag");
+    private final javafx.scene.control.RadioButton orRadio = new javafx.scene.control.RadioButton("OR");
+    private final javafx.scene.control.RadioButton andRadio = new javafx.scene.control.RadioButton("AND");
 
     public MainView() {
         SplitPane splitPane = new SplitPane(folderTreePane.getView(), galleryPane.getView());
@@ -39,6 +47,8 @@ public final class MainView {
 
         mainLayout.setCenter(splitPane);
         mainLayout.setBottom(statusBarPane.getView());
+        setupFilterPane();
+        mainLayout.setTop(filterPane);
 
         root.getChildren().add(mainLayout);
         
@@ -63,6 +73,96 @@ public final class MainView {
             viewerPane.getView().setVisible(false);
             galleryPane.scrollTo(item);
         });
+        
+        java.util.function.Consumer<MediaItem> saveFlagsHandler = item -> {
+            if (currentFolder != null && allItems != null) {
+                id.ac.unjani.humas.sortirmedia.service.SidecarService.saveFlags(currentFolder, allItems);
+                applyFilter();
+            }
+        };
+        galleryPane.setOnFlagChanged(saveFlagsHandler);
+        viewerPane.setOnFlagChanged(saveFlagsHandler);
+    }
+
+    private void setupFilterPane() {
+        filterPane.setPadding(new javafx.geometry.Insets(10));
+        filterPane.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        
+        javafx.scene.control.ToggleGroup group = new javafx.scene.control.ToggleGroup();
+        orRadio.setToggleGroup(group);
+        andRadio.setToggleGroup(group);
+        orRadio.setSelected(true);
+        
+        for (int i = 0; i < 5; i++) {
+            flagChecks[i] = new javafx.scene.control.CheckBox("Flag " + (i + 1));
+            flagChecks[i].setOnAction(e -> applyFilter());
+            filterPane.getChildren().add(flagChecks[i]);
+        }
+        
+        unflaggedCheck.setOnAction(e -> applyFilter());
+        orRadio.setOnAction(e -> applyFilter());
+        andRadio.setOnAction(e -> applyFilter());
+        
+        javafx.scene.control.Button resetAllBtn = new javafx.scene.control.Button("Reset Semua Flag");
+        resetAllBtn.setOnAction(e -> {
+            if (allItems != null && currentFolder != null) {
+                allItems.forEach(MediaItem::clearFlags);
+                id.ac.unjani.humas.sortirmedia.service.SidecarService.saveFlags(currentFolder, allItems);
+                applyFilter();
+            }
+        });
+        
+        filterPane.getChildren().addAll(
+            new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+            unflaggedCheck,
+            new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+            orRadio, andRadio,
+            new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+            resetAllBtn
+        );
+    }
+
+    private void applyFilter() {
+        if (currentItems == null) return;
+        
+        boolean tempAnyFlag = false;
+        for (javafx.scene.control.CheckBox cb : flagChecks) {
+            if (cb.isSelected()) tempAnyFlag = true;
+        }
+        final boolean anyFlagChecked = tempAnyFlag;
+        
+        boolean unflaggedChecked = unflaggedCheck.isSelected();
+        boolean isAndMode = andRadio.isSelected();
+        
+        List<MediaItem> filtered = currentItems.stream().filter(item -> {
+            if (!anyFlagChecked && !unflaggedChecked) return true; // No filter active
+            
+            boolean hasAnyFlag = false;
+            boolean hasAllCheckedFlags = true;
+            boolean itemHasAnyFlag = item.getFlags() != 0;
+            
+            if (unflaggedChecked && !itemHasAnyFlag) {
+                return true;
+            }
+            
+            for (int i = 0; i < 5; i++) {
+                if (flagChecks[i].isSelected()) {
+                    if (item.hasFlag(i)) {
+                        hasAnyFlag = true;
+                    } else {
+                        hasAllCheckedFlags = false;
+                    }
+                }
+            }
+            
+            if (isAndMode) {
+                return anyFlagChecked && hasAllCheckedFlags;
+            } else {
+                return anyFlagChecked && hasAnyFlag;
+            }
+        }).toList();
+        
+        galleryPane.showItems(filtered);
     }
 
     public StackPane getView() {
@@ -76,11 +176,16 @@ public final class MainView {
         Task<List<MediaItem>> task = FolderScanner.scanTask(folder);
         task.setOnSucceeded(e -> {
             List<MediaItem> items = task.getValue();
+            this.currentFolder = folder;
+            this.allItems = items;
+            
+            id.ac.unjani.humas.sortirmedia.service.SidecarService.loadFlags(folder, items);
             List<id.ac.unjani.humas.sortirmedia.service.MediaGrouping.MediaGroup> groups = id.ac.unjani.humas.sortirmedia.service.MediaGrouping
                     .group(items);
             List<MediaItem> primaryItems = groups.stream().map(g -> g.primary()).toList();
             this.currentItems = primaryItems;
-            galleryPane.showItems(primaryItems);
+            
+            applyFilter();
             statusBarPane.showFolderInfo(folder, items);
             log.info("Folder dibuka: {} ({} item, {} grup)", folder, items.size(), groups.size());
         });

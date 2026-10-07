@@ -34,6 +34,7 @@ public final class GalleryPane {
     private Consumer<MediaItem> onItemSelected = item -> {
     };
     private Consumer<MediaItem> onItemAction = null;
+    private Consumer<MediaItem> onFlagChanged = null;
 
     public GalleryPane() {
         tilePane.setPadding(new Insets(10));
@@ -54,6 +55,10 @@ public final class GalleryPane {
     
     public void setOnItemAction(Consumer<MediaItem> callback) {
         this.onItemAction = callback;
+    }
+    
+    public void setOnFlagChanged(Consumer<MediaItem> callback) {
+        this.onFlagChanged = callback;
     }
 
     public void showItems(List<MediaItem> items) {
@@ -93,7 +98,9 @@ public final class GalleryPane {
         placeholder.setTextFill(Color.GRAY);
         placeholder.setStyle("-fx-font-size: 11px;");
 
-        StackPane imageHolder = new StackPane(placeholder, imageView);
+        javafx.scene.layout.HBox badgeBox = BadgeBuilder.createBadges(item);
+
+        StackPane imageHolder = new StackPane(placeholder, imageView, badgeBox);
         imageHolder.setPrefSize(PreviewService.THUMBNAIL_SIZE, PreviewService.THUMBNAIL_SIZE);
         imageHolder.setStyle("-fx-background-color: -fx-control-inner-background; "
                 + "-fx-border-color: -fx-box-border; -fx-border-radius: 4; -fx-background-radius: 4;");
@@ -115,6 +122,23 @@ public final class GalleryPane {
         cell.setOnKeyPressed(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.ENTER && onItemAction != null) {
                 onItemAction.accept(item);
+            } else {
+                boolean changed = true;
+                switch (e.getCode()) {
+                    case DIGIT0, NUMPAD0 -> item.clearFlags();
+                    case DIGIT1, NUMPAD1 -> item.toggleFlag(0);
+                    case DIGIT2, NUMPAD2 -> item.toggleFlag(1);
+                    case DIGIT3, NUMPAD3 -> item.toggleFlag(2);
+                    case DIGIT4, NUMPAD4 -> item.toggleFlag(3);
+                    case DIGIT5, NUMPAD5 -> item.toggleFlag(4);
+                    default -> changed = false;
+                }
+                if (changed) {
+                    BadgeBuilder.updateBadges(badgeBox, item);
+                    if (onFlagChanged != null) {
+                        onFlagChanged.accept(item);
+                    }
+                }
             }
         });
         cell.setCursor(javafx.scene.Cursor.HAND);

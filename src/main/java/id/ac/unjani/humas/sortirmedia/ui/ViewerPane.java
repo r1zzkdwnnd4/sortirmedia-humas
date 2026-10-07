@@ -24,6 +24,7 @@ public final class ViewerPane {
 
     private final StackPane root = new StackPane();
     private final ImageView imageView = new ImageView();
+    private final javafx.scene.layout.HBox badgeBox = new javafx.scene.layout.HBox();
     private final PreviewService previewService = new PreviewService();
 
     private List<MediaItem> items;
@@ -31,6 +32,7 @@ public final class ViewerPane {
     
     private Consumer<MediaItem> onClose;
     private Consumer<MediaItem> onItemChanged;
+    private Consumer<MediaItem> onFlagChanged;
 
     private double dragStartX, dragStartY;
     private double imgTranslateStartX, imgTranslateStartY;
@@ -42,7 +44,12 @@ public final class ViewerPane {
         imageView.setPreserveRatio(true);
         imageView.setSmooth(true);
         
-        root.getChildren().add(imageView);
+        badgeBox.setAlignment(javafx.geometry.Pos.TOP_RIGHT);
+        badgeBox.setPadding(new javafx.geometry.Insets(20));
+        badgeBox.setSpacing(10);
+        badgeBox.setMouseTransparent(true);
+        
+        root.getChildren().addAll(imageView, badgeBox);
 
         // Event listener
         root.setFocusTraversable(true);
@@ -65,6 +72,10 @@ public final class ViewerPane {
     public void setOnItemChanged(Consumer<MediaItem> onItemChanged) {
         this.onItemChanged = onItemChanged;
     }
+    
+    public void setOnFlagChanged(Consumer<MediaItem> onFlagChanged) {
+        this.onFlagChanged = onFlagChanged;
+    }
 
     public void open(List<MediaItem> items, int startIndex) {
         this.items = items;
@@ -80,6 +91,24 @@ public final class ViewerPane {
             navigate(-1);
         } else if (e.getCode() == KeyCode.RIGHT) {
             navigate(1);
+        } else if (items != null && currentIndex >= 0 && currentIndex < items.size()) {
+            MediaItem item = items.get(currentIndex);
+            boolean changed = true;
+            switch (e.getCode()) {
+                case DIGIT0, NUMPAD0 -> item.clearFlags();
+                case DIGIT1, NUMPAD1 -> item.toggleFlag(0);
+                case DIGIT2, NUMPAD2 -> item.toggleFlag(1);
+                case DIGIT3, NUMPAD3 -> item.toggleFlag(2);
+                case DIGIT4, NUMPAD4 -> item.toggleFlag(3);
+                case DIGIT5, NUMPAD5 -> item.toggleFlag(4);
+                default -> changed = false;
+            }
+            if (changed) {
+                BadgeBuilder.updateBadges(badgeBox, item);
+                if (onFlagChanged != null) {
+                    onFlagChanged.accept(item);
+                }
+            }
         }
         e.consume();
     }
@@ -98,6 +127,8 @@ public final class ViewerPane {
         
         MediaItem item = items.get(currentIndex);
         if (onItemChanged != null) onItemChanged.accept(item);
+        
+        BadgeBuilder.updateBadges(badgeBox, item);
         
         // Reset transform
         imageView.setTranslateX(0);

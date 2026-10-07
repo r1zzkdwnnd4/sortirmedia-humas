@@ -69,6 +69,20 @@ public final class MediaItem {
     /** Dipakai oleh lapisan sidecar (Fase 4) saat memuat ulang flag dari disk. */
     public void setFlags(int flags) { this.flags = flags; }
 
+    public void toggleFlag(int flagIndex) {
+        if (flagIndex >= 0 && flagIndex < 5) {
+            this.flags ^= (1 << flagIndex);
+        }
+    }
+
+    public void clearFlags() {
+        this.flags = 0;
+    }
+    
+    public boolean hasFlag(int flagIndex) {
+        return (this.flags & (1 << flagIndex)) != 0;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
