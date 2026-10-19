@@ -2,7 +2,11 @@ package id.ac.unjani.humas.sortirmedia.ui;
 
 import id.ac.unjani.humas.sortirmedia.model.MediaItem;
 import id.ac.unjani.humas.sortirmedia.service.FolderScanner;
+import id.ac.unjani.humas.sortirmedia.service.MediaGrouping;
+import id.ac.unjani.humas.sortirmedia.service.SidecarService;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import javafx.concurrent.Task;
 import javafx.scene.control.Alert;
@@ -33,6 +37,7 @@ public final class MainView {
 
     private List<MediaItem> allItems;
     private List<MediaItem> currentItems;
+    private List<MediaGrouping.MediaGroup> allGroups;
     private Path currentFolder;
 
     private final javafx.scene.layout.HBox filterPane = new javafx.scene.layout.HBox(10);
@@ -112,13 +117,86 @@ public final class MainView {
             }
         });
         
+        javafx.scene.control.Button exportBtn = new javafx.scene.control.Button("Export / Pindahkan...");
+        exportBtn.setOnAction(e -> {
+            if (currentItems == null || currentItems.isEmpty()) {
+                showError("Tidak ada file yang bisa diexport.");
+                return;
+            }
+            // Dapatkan item-item yang terfilter di galeri saat ini
+            List<MediaItem> currentlyShowing = galleryPane.getView().getContent() instanceof javafx.scene.layout.TilePane tp 
+                ? tp.getChildren().stream()
+                    .map(node -> (MediaItem) node.getUserData())
+                    .toList()
+                : Collections.emptyList();
+            
+            if (currentlyShowing.isEmpty()) {
+                showError("Tidak ada file yang sedang ditampilkan (filter kosong).");
+                return;
+            }
+            
+            // Map kembali ke MediaGroup
+            List<MediaGrouping.MediaGroup> selectedGroups = new ArrayList<>();
+            for (MediaItem item : currentlyShowing) {
+                for (MediaGrouping.MediaGroup mediaGroup : allGroups) {
+                    if (mediaGroup.primary() == item) {
+                        selectedGroups.add(mediaGroup);
+                        break;
+                    }
+                }
+            }
+            
+            ExportDialog dialog = new ExportDialog(selectedGroups, () -> {
+                // Refresh folder setelah operasi sukses
+                openFolder(currentFolder);
+            });
+            dialog.show();
+        });
+        
+        javafx.scene.control.Button uploadDriveBtn = new javafx.scene.control.Button("Upload Google Drive...");
+        uploadDriveBtn.setOnAction(e -> {
+            if (currentItems == null || currentItems.isEmpty()) {
+                showError("Tidak ada file yang bisa diupload.");
+                return;
+            }
+            List<MediaItem> currentlyShowing = galleryPane.getView().getContent() instanceof javafx.scene.layout.TilePane tp 
+                ? tp.getChildren().stream()
+                    .map(node -> (MediaItem) node.getUserData())
+                    .toList()
+                : Collections.emptyList();
+            
+            if (currentlyShowing.isEmpty()) {
+                showError("Tidak ada file yang sedang ditampilkan (filter kosong).");
+                return;
+            }
+            
+            List<MediaGrouping.MediaGroup> selectedGroups = new ArrayList<>();
+            for (MediaItem item : currentlyShowing) {
+                for (MediaGrouping.MediaGroup mediaGroup : allGroups) {
+                    if (mediaGroup.primary() == item) {
+                        selectedGroups.add(mediaGroup);
+                        break;
+                    }
+                }
+            }
+            
+            UploadDriveDialog dialog = new UploadDriveDialog(selectedGroups, () -> {
+                log.info("Upload Google Drive berhasil diselesaikan.");
+            });
+            dialog.show();
+        });
+        
         filterPane.getChildren().addAll(
             new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
             unflaggedCheck,
             new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
             orRadio, andRadio,
             new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
-            resetAllBtn
+            resetAllBtn,
+            new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+            exportBtn,
+            new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+            uploadDriveBtn
         );
     }
 
@@ -179,9 +257,9 @@ public final class MainView {
             this.currentFolder = folder;
             this.allItems = items;
             
-            id.ac.unjani.humas.sortirmedia.service.SidecarService.loadFlags(folder, items);
-            List<id.ac.unjani.humas.sortirmedia.service.MediaGrouping.MediaGroup> groups = id.ac.unjani.humas.sortirmedia.service.MediaGrouping
-                    .group(items);
+            SidecarService.loadFlags(folder, items);
+            List<MediaGrouping.MediaGroup> groups = MediaGrouping.group(items);
+            this.allGroups = groups;
             List<MediaItem> primaryItems = groups.stream().map(g -> g.primary()).toList();
             this.currentItems = primaryItems;
             

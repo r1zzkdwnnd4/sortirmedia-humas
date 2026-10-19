@@ -48,12 +48,27 @@
       <scope>test</scope>
     </dependency>
 
-    <!--
-      Ditambahkan di fase berikutnya, bukan sekarang:
-      - Fase 1-2: com.drewnoakes:metadata-extractor (EXIF)
-      - Fase 4  : Jackson atau Gson (sidecar flag JSON)
-      - Fase 6  : Google API Client + Google Drive API v3 + OAuth2
-    -->
+    <!-- Google Drive API & OAuth2 -->
+    <dependency>
+      <groupId>com.google.api-client</groupId>
+      <artifactId>google-api-client</artifactId>
+      <version>2.7.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client-jetty</artifactId>
+      <version>1.36.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.apis</groupId>
+      <artifactId>google-api-services-drive</artifactId>
+      <version>v3-rev20230822-2.0.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client-gson</artifactId>
+      <version>1.44.2</version>
+    </dependency>
   </dependencies>
 
   <build>
