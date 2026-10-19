@@ -31,11 +31,21 @@ public final class StatusBarPane {
     public HBox getView() { return root; }
 
     public void showFolderInfo(Path folder, List<MediaItem> items) {
+        showFolderInfo(folder, 0, items);
+    }
+
+    public void showFolderInfo(Path folder, int subfolderCount, List<MediaItem> items) {
         long totalBytes = items.stream().mapToLong(MediaItem::getSizeBytes).sum();
+        String folderPart = subfolderCount > 0 ? subfolderCount + " folder  •  " : "";
         folderInfoLabel.setText(String.format(
-                "%s  •  %s  •  %d file  •  %s",
+                "%s  •  %s  •  %s%d file  •  %s",
                 folder.getFileName() != null ? folder.getFileName() : folder,
-                folder, items.size(), formatSize(totalBytes)));
+                folder, folderPart, items.size(), formatSize(totalBytes)));
+    }
+
+    public void showSelectedFolderInfo(Path folder) {
+        String name = folder.getFileName() != null ? folder.getFileName().toString() : folder.toString();
+        fileInfoLabel.setText("Folder: " + name + "  •  " + folder);
     }
 
     public void showFileInfo(MediaItem item) {

@@ -343,13 +343,47 @@ public class GoogleDriveService {
     }
 
     /**
-     * Mencari atau membuat folder bulan (misal "8. Agustus", "10. Oktober") di bawah folder induk Humas.
+     * Mencari atau membuat folder tahun (misal "2026") di bawah folder induk Humas.
      */
-    public String getOrCreateMonthFolder(Drive drive, String humasFolderId, int monthNumber) throws IOException {
+    public String getOrCreateYearFolder(Drive drive, String parentFolderId, int year) throws IOException {
+        String yearFolderName = String.valueOf(year);
+
+        String query = "mimeType = 'application/vnd.google-apps.folder' and name = '" 
+                + escapeQuery(yearFolderName) + "' and '" + parentFolderId + "' in parents and trashed = false";
+        FileList result = drive.files().list()
+                .setQ(query)
+                .setSpaces("drive")
+                .setFields("files(id, name)")
+                .setPageSize(5)
+                .execute();
+
+        if (result.getFiles() != null && !result.getFiles().isEmpty()) {
+            String folderId = result.getFiles().get(0).getId();
+            log.info("Ditemukan folder tahun '{}' (ID: {})", yearFolderName, folderId);
+            return folderId;
+        }
+
+        // Buat folder tahun baru
+        com.google.api.services.drive.model.File folderMetadata = new com.google.api.services.drive.model.File();
+        folderMetadata.setName(yearFolderName);
+        folderMetadata.setMimeType("application/vnd.google-apps.folder");
+        folderMetadata.setParents(Collections.singletonList(parentFolderId));
+
+        com.google.api.services.drive.model.File created = drive.files().create(folderMetadata)
+                .setFields("id, name")
+                .execute();
+        log.info("Berhasil membuat folder tahun baru '{}' (ID: {}) di bawah {}", yearFolderName, created.getId(), parentFolderId);
+        return created.getId();
+    }
+
+    /**
+     * Mencari atau membuat folder bulan (misal "8. Agustus", "10. Oktober") di bawah folder tahun.
+     */
+    public String getOrCreateMonthFolder(Drive drive, String parentFolderId, int monthNumber) throws IOException {
         String monthFolderName = getMonthFolderName(monthNumber);
 
         String query = "mimeType = 'application/vnd.google-apps.folder' and name = '" 
-                + escapeQuery(monthFolderName) + "' and '" + humasFolderId + "' in parents and trashed = false";
+                + escapeQuery(monthFolderName) + "' and '" + parentFolderId + "' in parents and trashed = false";
         FileList result = drive.files().list()
                 .setQ(query)
                 .setSpaces("drive")
@@ -367,12 +401,12 @@ public class GoogleDriveService {
         com.google.api.services.drive.model.File folderMetadata = new com.google.api.services.drive.model.File();
         folderMetadata.setName(monthFolderName);
         folderMetadata.setMimeType("application/vnd.google-apps.folder");
-        folderMetadata.setParents(Collections.singletonList(humasFolderId));
+        folderMetadata.setParents(Collections.singletonList(parentFolderId));
 
         com.google.api.services.drive.model.File created = drive.files().create(folderMetadata)
                 .setFields("id, name")
                 .execute();
-        log.info("Berhasil membuat folder bulan baru '{}' (ID: {}) di bawah Humas", monthFolderName, created.getId());
+        log.info("Berhasil membuat folder bulan baru '{}' (ID: {}) di bawah parent {}", monthFolderName, created.getId(), parentFolderId);
         return created.getId();
     }
 

@@ -55,7 +55,9 @@ public class UploadDriveDialog {
     private final TextField activityField = new TextField();
     private final DatePicker datePicker = new DatePicker(LocalDate.now());
     private final Label folderPreviewLabel = new Label();
+    private final Label yearFolderLabel = new Label();
     private final Label monthFolderLabel = new Label();
+    private final Label hierarchyPreviewLabel = new Label();
     private final TextField humasFolderIdField = new TextField();
 
     private final Label accountStatusLabel = new Label("Memeriksa status login...");
@@ -172,21 +174,30 @@ public class UploadDriveDialog {
         activityField.setPromptText("Contoh: Peliputan Dies Natalis");
         grid.add(activityField, 1, 1);
 
-        grid.add(new Label("Folder Bulan Drive:"), 0, 2);
-        grid.add(monthFolderLabel, 1, 2);
-
-        grid.add(new Label("Nama Folder Kegiatan:"), 0, 3);
-        folderPreviewLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #1976D2;");
-        grid.add(folderPreviewLabel, 1, 3);
-
-        grid.add(new Label("Folder Induk Humas (ID/Nama):"), 0, 4);
+        grid.add(new Label("Folder Induk Humas (ID/Nama):"), 0, 2);
         String savedFolderId = driveService.getConfiguredHumasFolderId();
         humasFolderIdField.setText(savedFolderId.isEmpty() ? "Humas" : savedFolderId);
         humasFolderIdField.setPromptText("Nama 'Humas' atau ID folder Drive");
-        grid.add(humasFolderIdField, 1, 4);
+        grid.add(humasFolderIdField, 1, 2);
+
+        grid.add(new Label("Folder Tahun Drive:"), 0, 3);
+        grid.add(yearFolderLabel, 1, 3);
+
+        grid.add(new Label("Folder Bulan Drive:"), 0, 4);
+        grid.add(monthFolderLabel, 1, 4);
+
+        grid.add(new Label("Nama Folder Kegiatan:"), 0, 5);
+        folderPreviewLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #1976D2;");
+        grid.add(folderPreviewLabel, 1, 5);
+
+        grid.add(new Label("Target Hirarki Drive:"), 0, 6);
+        hierarchyPreviewLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #2E7D32;");
+        grid.add(hierarchyPreviewLabel, 1, 6);
 
         datePicker.valueProperty().addListener((obs, oldVal, newVal) -> updateFolderPreviews());
         activityField.textProperty().addListener((obs, oldVal, newVal) -> updateFolderPreviews());
+        humasFolderIdField.textProperty().addListener((obs, oldVal, newVal) -> updateFolderPreviews());
+        updateFolderPreviews();
 
         box.getChildren().add(grid);
         return box;
@@ -194,12 +205,19 @@ public class UploadDriveDialog {
 
     private void updateFolderPreviews() {
         LocalDate date = datePicker.getValue() != null ? datePicker.getValue() : LocalDate.now();
+        int year = date.getYear();
+        yearFolderLabel.setText(String.valueOf(year));
+
         String monthName = GoogleDriveService.getMonthFolderName(date.getMonthValue());
         monthFolderLabel.setText(monthName);
 
         String activity = activityField.getText();
         String folderName = GoogleDriveService.formatActivityFolderName(date, activity);
         folderPreviewLabel.setText(folderName);
+
+        String humas = humasFolderIdField.getText() != null ? humasFolderIdField.getText().trim() : "";
+        if (humas.isEmpty()) humas = "Humas";
+        hierarchyPreviewLabel.setText("Drive > " + humas + " > " + year + " > " + monthName + " > " + folderName);
     }
 
     private void updateFileSummary() {
@@ -349,22 +367,30 @@ public class UploadDriveDialog {
                 Drive drive = driveService.getDriveService();
 
                 // 1. Cari atau buat folder induk Humas
-                appendLogAsync("Memeriksa folder induk Humas...");
+                appendLogAsync("Memeriksa folder induk Humas (" + humasTarget + ")...");
                 String humasFolderId = driveService.getOrCreateHumasFolder(drive, humasTarget);
                 appendLogAsync("Folder induk Humas siap: " + humasFolderId);
 
                 if (isCancelled()) return null;
 
-                // 2. Cari atau buat folder bulan (e.g. 8. Agustus)
+                // 2. Cari atau buat folder tahun (misal 2026) di bawah Humas
+                int year = date.getYear();
+                appendLogAsync("Mencari/membuat folder tahun " + year + " di bawah Humas...");
+                String yearFolderId = driveService.getOrCreateYearFolder(drive, humasFolderId, year);
+                appendLogAsync("Folder tahun siap: " + year + " (ID: " + yearFolderId + ")");
+
+                if (isCancelled()) return null;
+
+                // 3. Cari atau buat folder bulan (e.g. 10. Oktober) di bawah folder tahun
                 int monthNum = date.getMonthValue();
                 String monthName = GoogleDriveService.getMonthFolderName(monthNum);
-                appendLogAsync("Mencari/membuat folder bulan: " + monthName + "...");
-                String monthFolderId = driveService.getOrCreateMonthFolder(drive, humasFolderId, monthNum);
+                appendLogAsync("Mencari/membuat folder bulan " + monthName + " di bawah tahun " + year + "...");
+                String monthFolderId = driveService.getOrCreateMonthFolder(drive, yearFolderId, monthNum);
                 appendLogAsync("Folder bulan siap: " + monthName + " (ID: " + monthFolderId + ")");
 
                 if (isCancelled()) return null;
 
-                // 3. Buat folder kegiatan (YYMMDD - Kegiatan)
+                // 4. Buat folder kegiatan (YYMMDD - Kegiatan) di bawah folder bulan
                 String actFolderName = GoogleDriveService.formatActivityFolderName(date, activityName);
                 appendLogAsync("Mencari/membuat folder kegiatan: " + actFolderName + "...");
                 String actFolderId = driveService.getOrCreateActivityFolder(drive, monthFolderId, date, activityName);

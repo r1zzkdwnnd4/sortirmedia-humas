@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 import javafx.concurrent.Task;
 import org.slf4j.Logger;
@@ -39,44 +38,59 @@ public final class FolderScanner {
     private FolderScanner() {
     }
 
+    public record ScanResult(List<Path> subfolders, List<MediaItem> mediaItems) {
+    }
+
     /**
-     * Scan sinkron; panggil dari background thread, BUKAN dari JavaFX Application
-     * Thread.
+     * Scan sinkron untuk membaca subfolder dan daftar MediaItem.
      */
-    public static List<MediaItem> scan(Path folder) throws IOException {
-        List<MediaItem> result = new ArrayList<>();
+    public static ScanResult scanFolder(Path folder) throws IOException {
+        List<Path> subfolders = new ArrayList<>();
+        List<MediaItem> mediaItems = new ArrayList<>();
 
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder)) {
-            Iterator<Path> it = stream.iterator();
-            while (it.hasNext()) {
-                Path file = it.next();
+            for (Path file : stream) {
                 try {
-                    if (Files.isDirectory(file) || Files.isHidden(file))
+                    if (Files.isHidden(file)) {
                         continue;
+                    }
+                    if (Files.isDirectory(file)) {
+                        subfolders.add(file);
+                        continue;
+                    }
 
                     MediaType type = MediaTypeResolver.resolve(file);
-                    if (type == MediaType.UNKNOWN)
+                    if (type == MediaType.UNKNOWN) {
                         continue;
+                    }
 
                     long size = Files.size(file);
                     Instant modified = Files.getLastModifiedTime(file).toInstant();
-                    result.add(new MediaItem(file, type, size, modified));
+                    mediaItems.add(new MediaItem(file, type, size, modified));
                 } catch (IOException e) {
-                    log.warn("Melewati file yang gagal dibaca: {}", file, e);
+                    log.warn("Melewati file/folder yang gagal dibaca: {}", file, e);
                 }
             }
         }
 
-        result.sort(Comparator.comparing(MediaItem::getFileName, String.CASE_INSENSITIVE_ORDER));
-        return result;
+        subfolders.sort(Comparator.comparing(p -> p.getFileName().toString(), String.CASE_INSENSITIVE_ORDER));
+        mediaItems.sort(Comparator.comparing(MediaItem::getFileName, String.CASE_INSENSITIVE_ORDER));
+        return new ScanResult(subfolders, mediaItems);
+    }
+
+    /**
+     * Scan sinkron (hanya file media); dipertahankan untuk kompatibilitas.
+     */
+    public static List<MediaItem> scan(Path folder) throws IOException {
+        return scanFolder(folder).mediaItems();
     }
 
     /** Task siap pakai untuk dijalankan di executor/thread background dari UI. */
-    public static Task<List<MediaItem>> scanTask(Path folder) {
+    public static Task<ScanResult> scanTask(Path folder) {
         return new Task<>() {
             @Override
-            protected List<MediaItem> call() throws IOException {
-                return scan(folder);
+            protected ScanResult call() throws IOException {
+                return scanFolder(folder);
             }
         };
     }

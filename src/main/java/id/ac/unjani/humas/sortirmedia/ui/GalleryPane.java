@@ -2,12 +2,16 @@ package id.ac.unjani.humas.sortirmedia.ui;
 
 import id.ac.unjani.humas.sortirmedia.model.MediaItem;
 import id.ac.unjani.humas.sortirmedia.service.PreviewService;
+import java.nio.file.Path;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Cursor;
 import javafx.scene.control.Label;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -15,13 +19,11 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.TilePane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
 
 /**
- * Galeri thumbnail. Tiap thumbnail dimuat di background Task lewat
- * PreviewService, yang
- * otomatis memilih cara baca sesuai jenis file (foto langsung, RAW lewat
- * exiftool, video
- * lewat ffmpeg) tanpa GalleryPane perlu tahu detailnya (AGENTS.md Bagian 6.3).
+ * Galeri thumbnail. Menampilkan folder (seperti File Explorer) dan thumbnail file media.
+ * Tiap thumbnail dimuat di background Task lewat PreviewService (AGENTS.md Bagian 6.3).
  */
 public final class GalleryPane {
 
@@ -31,10 +33,12 @@ public final class GalleryPane {
     private final ScrollPane scrollPane = new ScrollPane(tilePane);
     private final PreviewService previewService = new PreviewService();
 
-    private Consumer<MediaItem> onItemSelected = item -> {
-    };
+    private List<Path> currentSubfolders = Collections.emptyList();
+    private Consumer<MediaItem> onItemSelected = item -> {};
     private Consumer<MediaItem> onItemAction = null;
     private Consumer<MediaItem> onFlagChanged = null;
+    private Consumer<Path> onFolderAction = null;
+    private Consumer<Path> onFolderSelected = null;
 
     public GalleryPane() {
         tilePane.setPadding(new Insets(10));
@@ -61,14 +65,100 @@ public final class GalleryPane {
         this.onFlagChanged = callback;
     }
 
+    public void setOnFolderAction(Consumer<Path> callback) {
+        this.onFolderAction = callback;
+    }
+
+    public void setOnFolderSelected(Consumer<Path> callback) {
+        this.onFolderSelected = callback;
+    }
+
+    public void setSubfolders(List<Path> subfolders) {
+        this.currentSubfolders = subfolders != null ? subfolders : Collections.emptyList();
+    }
+
     public void showItems(List<MediaItem> items) {
+        showItems(this.currentSubfolders, items);
+    }
+
+    public void showItems(List<Path> subfolders, List<MediaItem> items) {
+        this.currentSubfolders = subfolders != null ? subfolders : Collections.emptyList();
         tilePane.getChildren().clear();
-        for (MediaItem item : items)
+        for (Path subfolder : this.currentSubfolders) {
+            tilePane.getChildren().add(buildFolderCell(subfolder));
+        }
+        for (MediaItem item : items) {
             tilePane.getChildren().add(buildCell(item));
+        }
+    }
+
+    public List<MediaItem> getVisibleMediaItems() {
+        return tilePane.getChildren().stream()
+                .map(javafx.scene.Node::getUserData)
+                .filter(data -> data instanceof MediaItem)
+                .map(data -> (MediaItem) data)
+                .toList();
     }
 
     public void clear() {
+        currentSubfolders = Collections.emptyList();
         tilePane.getChildren().clear();
+    }
+
+    private StackPane buildFolderCell(Path folder) {
+        SVGPath folderIcon = new SVGPath();
+        folderIcon.setContent("M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z");
+        folderIcon.setFill(Color.web("#FFB300"));
+        folderIcon.setScaleX(2.8);
+        folderIcon.setScaleY(2.8);
+
+        Label typeBadge = new Label("FOLDER");
+        typeBadge.setStyle("-fx-font-size: 9px; -fx-font-weight: bold; -fx-text-fill: #E65100; "
+                + "-fx-background-color: #FFE082; -fx-padding: 1 4 1 4; -fx-background-radius: 3;");
+        StackPane.setAlignment(typeBadge, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(typeBadge, new Insets(4));
+
+        StackPane iconHolder = new StackPane(folderIcon, typeBadge);
+        iconHolder.setPrefSize(PreviewService.THUMBNAIL_SIZE, PreviewService.THUMBNAIL_SIZE);
+        iconHolder.setStyle("-fx-background-color: -fx-control-inner-background; "
+                + "-fx-border-color: -fx-box-border; -fx-border-radius: 4; -fx-background-radius: 4;");
+
+        String name = folder.getFileName() != null ? folder.getFileName().toString() : folder.toString();
+        Label nameLabel = new Label(name);
+        nameLabel.setStyle("-fx-font-size: 11px; -fx-font-weight: bold;");
+        nameLabel.setMaxWidth(PreviewService.THUMBNAIL_SIZE);
+        nameLabel.setTextOverrun(OverrunStyle.ELLIPSIS);
+
+        VBox cell = new VBox(4, iconHolder, nameLabel);
+        cell.setAlignment(Pos.CENTER);
+        cell.setPrefWidth(CELL_SIZE);
+        cell.setFocusTraversable(true);
+        cell.setCursor(Cursor.HAND);
+
+        cell.setOnMouseClicked(e -> {
+            cell.requestFocus();
+            if (onFolderSelected != null) {
+                onFolderSelected.accept(folder);
+            }
+            if (e.getClickCount() == 2 && onFolderAction != null) {
+                onFolderAction.accept(folder);
+            }
+        });
+
+        cell.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ENTER && onFolderAction != null) {
+                onFolderAction.accept(folder);
+            }
+        });
+
+        cell.setOnMouseEntered(e -> iconHolder.setStyle("-fx-background-color: #E3F2FD; "
+                + "-fx-border-color: #2196F3; -fx-border-radius: 4; -fx-background-radius: 4;"));
+        cell.setOnMouseExited(e -> iconHolder.setStyle("-fx-background-color: -fx-control-inner-background; "
+                + "-fx-border-color: -fx-box-border; -fx-border-radius: 4; -fx-background-radius: 4;"));
+
+        StackPane container = new StackPane(cell);
+        container.setUserData(folder);
+        return container;
     }
 
     public void scrollTo(MediaItem item) {

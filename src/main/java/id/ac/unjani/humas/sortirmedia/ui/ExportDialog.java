@@ -1,6 +1,5 @@
 package id.ac.unjani.humas.sortirmedia.ui;
 
-import id.ac.unjani.humas.sortirmedia.model.MediaItem;
 import id.ac.unjani.humas.sortirmedia.service.FileOperationService;
 import id.ac.unjani.humas.sortirmedia.service.MediaGrouping;
 import java.io.File;
@@ -142,9 +141,8 @@ public class ExportDialog {
         copyRadio.setDisable(true);
         moveRadio.setDisable(true);
 
-        FileOperationService.OperationMode mode = moveRadio.isSelected() ? 
-                FileOperationService.OperationMode.MOVE : 
-                FileOperationService.OperationMode.COPY;
+        FileOperationService.OperationMode mode = moveRadio.isSelected() ? FileOperationService.OperationMode.MOVE
+                : FileOperationService.OperationMode.COPY;
 
         Task<Void> task = FileOperationService.createOperationTask(mode, groups, flagPaths, fallbackPath);
 
@@ -155,10 +153,10 @@ public class ExportDialog {
             progressLabel.setText("Operasi selesai!");
             progressBar.progressProperty().unbind();
             progressBar.setProgress(1.0);
-            
+
             Alert alert = new Alert(Alert.AlertType.INFORMATION, "Operasi " + mode.name() + " berhasil diselesaikan.");
             alert.showAndWait();
-            
+
             if (onSuccess != null) {
                 onSuccess.run();
             }
@@ -169,7 +167,7 @@ public class ExportDialog {
             progressLabel.setText("Operasi gagal!");
             Alert alert = new Alert(Alert.AlertType.ERROR, "Terjadi kesalahan saat melakukan operasi.");
             alert.showAndWait();
-            
+
             startButton.setDisable(false);
             cancelButton.setDisable(false);
         });
