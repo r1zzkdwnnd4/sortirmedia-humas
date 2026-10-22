@@ -17,8 +17,8 @@ import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.StackPane;
 
 /**
- * Viewer fullscreen. Menampilkan foto secara penuh, mendukung zoom dan pan.
- * Mem-preload gambar berikutnya agar perpindahan instan (AGENTS.md Bagian 6.5).
+ * Viewer fullscreen: menampilkan foto/media secara penuh dengan dukungan zoom dan pan,
+ * serta mem-preload gambar berikutnya agar navigasi antar foto berlangsung instan.
  */
 public final class ViewerPane {
 

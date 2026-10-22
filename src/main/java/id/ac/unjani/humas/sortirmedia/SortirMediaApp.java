@@ -9,8 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Entry point JavaFX. Fase 0: hanya jendela kosong untuk memastikan fondasi
- * berjalan.
+ * Entry point utama aplikasi JavaFX Sortir Media Humas.
  */
 public class SortirMediaApp extends Application {
 

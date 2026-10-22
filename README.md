@@ -1,6 +1,6 @@
 # Sortir Media
 
-Aplikasi desktop (Java + JavaFX) untuk menyeleksi foto dokumentasi kegiatan di Biro Humas UNJANI, lalu mengunggah hasilnya ke Google Drive. Panduan lengkap ada di `AGENTS.md`.
+Aplikasi desktop (Java + JavaFX) untuk menyeleksi foto dokumentasi kegiatan di Biro Humas UNJANI, lalu mengunggah hasilnya ke Google Drive.
 
 ## Prasyarat
 
@@ -37,7 +37,7 @@ Log ditulis ke `~/.sortir-media/logs/`.
 
 ## Folder uji (wajib disiapkan di luar repo)
 
-Siapkan satu folder berisi kira-kira 300-500 file untuk menguji semua fase. Jangan masukkan ke git. Isi minimal:
+Siapkan satu folder berisi kira-kira 300-500 file untuk menguji fitur aplikasi. Jangan masukkan ke git. Isi minimal:
 
 - JPEG dari beberapa kamera/HP, dan PNG
 - File RAW dari setiap model kamera yang dipakai Humas

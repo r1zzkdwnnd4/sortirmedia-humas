@@ -37,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Service untuk integrasi Google Drive v3 dan OAuth2 Desktop (Fase 6).
+ * Service untuk integrasi Google Drive v3 dan otentikasi OAuth2 Desktop.
  * Menyimpan token di ~/.sortir-media/tokens agar tidak perlu login berulang.
  */
 public class GoogleDriveService {

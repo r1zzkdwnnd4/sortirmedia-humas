@@ -24,11 +24,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Menyusun FolderTreePane, GalleryPane, StatusBarPane jadi satu layout
- * (kiri/tengah/bawah)
- * sesuai AGENTS.md Bagian 7, dan menghubungkan alur: pilih folder di tree ->
- * scan di
- * background -> tampilkan di galeri + status bar.
+ * Tampilan utama aplikasi yang mengintegrasikan FolderTreePane, GalleryPane,
+ * dan StatusBarPane, serta menghubungkan alur kerja: pemilihan folder, pemindaian
+ * di latar belakang, penampilan galeri, dan pembaruan bilah status.
  */
 public final class MainView {
 

@@ -1,2 +1,2 @@
-/** Model data: MediaItem, jenis media, flag. Diisi mulai Fase 1. */
+/** Model data: MediaItem, jenis media, dan status flagging. */
 package id.ac.unjani.humas.sortirmedia.model;

@@ -10,8 +10,8 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 
 /**
- * Status bar bawah: info folder yang sedang dibuka (kiri) dan info file yang sedang
- * dipilih (kanan), sesuai AGENTS.md Bagian 7.
+ * Bilah status di bagian bawah jendela: menampilkan informasi folder yang sedang dibuka (kiri)
+ * dan detail file media yang sedang dipilih (kanan).
  */
 public final class StatusBarPane {
 

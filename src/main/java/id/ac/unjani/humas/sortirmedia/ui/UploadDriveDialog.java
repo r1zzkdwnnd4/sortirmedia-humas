@@ -35,7 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Dialog untuk mengunggah folder hasil sortir ke Google Drive (Fase 6).
+ * Dialog interaktif untuk mengunggah folder hasil sortir ke Google Drive.
  * Memuat:
  * - Login OAuth2 (Desktop) dengan token tersimpan
  * - Input nama kegiatan & DatePicker (default hari ini)

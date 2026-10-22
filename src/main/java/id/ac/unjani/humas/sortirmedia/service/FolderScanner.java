@@ -26,10 +26,8 @@ import org.slf4j.LoggerFactory;
  * per file — kalau dilakukan sinkron di sini untuk ratusan file, scan folder
  * akan terasa
  * macet sebelum galeri sempat tampil. Metadata dibaca belakangan secara lazy
- * per-item lewat
- * PreviewService.readMetadata, dipanggil dari GalleryPane barengan saat
- * thumbnail dimuat
- * (AGENTS.md Bagian 6.8: target folder ±500 file tidak boleh freeze).
+ * per-item lewat {@code PreviewService.readMetadata}, dipanggil dari GalleryPane
+ * bersamaan saat thumbnail dimuat di background agar UI tetap responsif.
  */
 public final class FolderScanner {
 

@@ -8,11 +8,9 @@ import java.util.Objects;
  * Representasi satu file media di galeri.
  *
  * <p>Instance ini dibuat oleh {@code FolderScanner} saat folder dibaca. Field resolusi
- * dan durasi boleh {@code -1} / {@code null} sampai informasinya berhasil dibaca
- * (mis. RAW dan video butuh pembacaan tambahan yang baru dikerjakan di Fase 2).
+ * dan durasi bernilai {@code -1} sampai informasinya berhasil dibaca oleh reader metadata.
  *
  * <p>Field {@code flags} adalah bitmask 5 bit untuk flag 1-5 (bit 0 = flag 1).
- * Belum dipakai secara aktif sampai Fase 4; untuk saat ini selalu bernilai 0.
  */
 public final class MediaItem {
 
@@ -66,7 +64,7 @@ public final class MediaItem {
 
     public int getFlags() { return flags; }
 
-    /** Dipakai oleh lapisan sidecar (Fase 4) saat memuat ulang flag dari disk. */
+    /** Dipakai oleh layanan sidecar saat memuat ulang flag dari disk. */
     public void setFlags(int flags) { this.flags = flags; }
 
     public void toggleFlag(int flagIndex) {

@@ -16,11 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Preview untuk video: hanya mengambil SATU frame depan lewat ffmpeg sebagai
- * thumbnail,
- * TIDAK PERNAH memutar video (keputusan final pengguna, AGENTS.md Bagian 5 #2).
- * Durasi dan
- * resolusi dibaca lewat ffprobe.
+ * Preview untuk video: mengambil satu frame cuplikan video melalui ffmpeg sebagai
+ * gambar thumbnail dan preview, serta membaca durasi dan resolusi video melalui ffprobe.
  */
 public final class VideoPreviewProvider implements PreviewProvider {
 

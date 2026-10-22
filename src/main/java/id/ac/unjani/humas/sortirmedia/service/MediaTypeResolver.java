@@ -5,8 +5,8 @@ import java.nio.file.Path;
 import java.util.Set;
 
 /**
- * Satu-satunya tempat yang tahu ekstensi mana masuk kategori apa (lihat AGENTS.md Bagian 6.1).
- * Kalau Humas memakai kamera dengan ekstensi RAW lain, cukup tambah di {@link #RAW_EXT}.
+ * Resolver untuk menentukan kategori media berdasarkan ekstensi file.
+ * Jika terdapat kamera dengan format ekstensi RAW baru, daftarkan pada {@link #RAW_EXT}.
  */
 public final class MediaTypeResolver {
 

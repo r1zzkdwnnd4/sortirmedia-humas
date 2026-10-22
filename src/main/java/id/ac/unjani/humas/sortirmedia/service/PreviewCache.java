@@ -11,11 +11,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Cache preview JPEG hasil ekstraksi RAW/video di disk, sesuai AGENTS.md Bagian
- * 6.3.
- * Kunci cache: hash dari path absolut + ukuran file + lastModified, supaya
- * cache otomatis
- * tidak valid lagi kalau file sumber berubah.
+ * Cache preview JPEG hasil ekstraksi RAW/video di disk penyimpanan.
+ * Kunci cache: hash dari path absolut + ukuran file + lastModified, sehingga
+ * cache otomatis diperbarui apabila file sumber mengalami perubahan.
  */
 public final class PreviewCache {
 

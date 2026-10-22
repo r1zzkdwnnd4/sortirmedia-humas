@@ -8,11 +8,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Mengelompokkan file RAW dan JPEG yang punya nama dasar sama (mis.
- * DSC_0012.ARW dan
- * DSC_0012.JPG) sebagai satu grup, sesuai AGENTS.md Bagian 6.3. Logika murni,
- * tanpa I/O,
- * supaya mudah di-unit-test terpisah dari FolderScanner.
+ * Mengelompokkan file RAW dan JPEG yang memiliki nama dasar sama (mis.
+ * DSC_0012.ARW dan DSC_0012.JPG) sebagai satu grup media. Logika murni,
+ * tanpa operasi I/O langsung, sehingga mudah diuji secara modular.
  */
 public final class MediaGrouping {
 

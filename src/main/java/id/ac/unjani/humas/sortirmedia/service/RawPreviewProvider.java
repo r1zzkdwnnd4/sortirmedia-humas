@@ -12,12 +12,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Preview untuk file RAW: mengekstrak JPEG preview yang tertanam memakai
- * exiftool, lalu
- * meng-cache-nya ke disk (AGENTS.md Bagian 6.3). Resolusi diambil dari JPEG
- * preview itu
- * sendiri sebagai pendekatan cepat; resolusi SENSOR asli biasanya lebih besar,
- * tapi untuk
- * kebutuhan seleksi foto ini cukup (lihat catatan di AGENTS.md Bagian 12).
+ * exiftool, lalu menyimpannya ke cache disk. Resolusi diambil dari JPEG
+ * preview embedded untuk menjaga efisiensi dan performa saat penyortiran media.
  */
 public final class RawPreviewProvider implements PreviewProvider {
 

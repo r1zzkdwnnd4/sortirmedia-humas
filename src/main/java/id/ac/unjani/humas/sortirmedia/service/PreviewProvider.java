@@ -4,11 +4,9 @@ import id.ac.unjani.humas.sortirmedia.model.MediaItem;
 import javafx.scene.image.Image;
 
 /**
- * Satu antarmuka yang dipakai galeri dan viewer untuk semua jenis media (foto,
- * RAW, video),
- * sesuai AGENTS.md Bagian 6.3. Dengan ini, fitur di atasnya (thumbnail, zoom,
- * flagging)
- * tidak perlu tahu jenis file di baliknya.
+ * Antarmuka terpadu yang digunakan galeri dan viewer untuk semua jenis media
+ * (foto standar, file RAW, dan video). Dengan antarmuka ini, komponen UI
+ * dapat menampilkan thumbnail dan preview secara konsisten.
  */
 public interface PreviewProvider {
 

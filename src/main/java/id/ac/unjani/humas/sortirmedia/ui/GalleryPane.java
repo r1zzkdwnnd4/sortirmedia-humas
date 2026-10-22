@@ -22,8 +22,8 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.SVGPath;
 
 /**
- * Galeri thumbnail. Menampilkan folder (seperti File Explorer) dan thumbnail file media.
- * Tiap thumbnail dimuat di background Task lewat PreviewService (AGENTS.md Bagian 6.3).
+ * Galeri thumbnail: menampilkan folder dan kartu pratinjau file media.
+ * Setiap thumbnail dimuat secara asinkron di background thread melalui PreviewService.
  */
 public final class GalleryPane {
 

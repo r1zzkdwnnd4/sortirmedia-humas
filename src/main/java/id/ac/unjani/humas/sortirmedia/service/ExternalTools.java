@@ -10,14 +10,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Mencari lokasi executable eksternal (ffmpeg, ffprobe, exiftool) sesuai
- * AGENTS.md Bagian 6.3:
- * cari dulu di folder tools/ di samping aplikasi, baru fallback ke PATH sistem.
+ * Mencari lokasi executable eksternal (ffmpeg, ffprobe, exiftool):
+ * mencari terlebih dahulu di folder tools/ di samping direktori aplikasi,
+ * kemudian fallback ke PATH sistem operasi.
  *
  * <p>
- * Tidak pernah melempar exception kalau tidak ditemukan — pemanggil
- * (RawPreviewProvider,
- * VideoPreviewProvider) bertanggung jawab menampilkan placeholder, bukan crash.
+ * Mengembalikan Optional.empty() jika tool tidak ditemukan sehingga pemanggil
+ * dapat menampilkan placeholder secara aman tanpa crash.
  */
 public final class ExternalTools {
 

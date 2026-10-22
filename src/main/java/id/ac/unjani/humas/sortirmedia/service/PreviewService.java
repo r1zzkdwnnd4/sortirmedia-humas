@@ -4,10 +4,8 @@ import id.ac.unjani.humas.sortirmedia.model.MediaItem;
 import javafx.scene.image.Image;
 
 /**
- * Titik akses tunggal untuk galeri dan viewer mendapatkan preview/metadata,
- * tanpa perlu tahu
- * jenis file di baliknya (AGENTS.md Bagian 6.3). Menggantikan ThumbnailService
- * dari Fase 1.
+ * Titik akses tunggal untuk galeri dan viewer mendapatkan preview/metadata
+ * secara seragam untuk seluruh jenis format media.
  */
 public final class PreviewService {
 

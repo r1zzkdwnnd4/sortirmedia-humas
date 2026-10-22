@@ -15,9 +15,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Panel folder di kiri: akses cepat (Pictures/Desktop/Downloads) + daftar drive, dengan
- * lazy loading (anak folder baru dibaca saat node di-expand) sesuai AGENTS.md Bagian 7.
- * Hanya menampilkan FOLDER, tidak menampilkan file di dalamnya.
+ * Panel navigasi folder di sisi kiri: akses cepat (Pictures/Desktop/Downloads) dan daftar drive,
+ * dengan pemuatan dinamis (lazy loading) saat folder dibuka. Hanya menampilkan folder.
  */
 public final class FolderTreePane {
 
