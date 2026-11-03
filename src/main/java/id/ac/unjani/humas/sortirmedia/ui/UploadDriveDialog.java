@@ -80,8 +80,19 @@ public class UploadDriveDialog {
     private Task<Void> currentUploadTask;
 
     public UploadDriveDialog(List<MediaGrouping.MediaGroup> groups, Runnable onSuccess) {
+        this(groups, "", null, onSuccess);
+    }
+
+    public UploadDriveDialog(List<MediaGrouping.MediaGroup> groups, String defaultActivityName, LocalDate defaultDate, Runnable onSuccess) {
         this.groups = groups;
         this.onSuccess = onSuccess;
+
+        if (defaultDate != null) {
+            this.datePicker.setValue(defaultDate);
+        }
+        if (defaultActivityName != null && !defaultActivityName.isBlank()) {
+            this.activityField.setText(defaultActivityName.trim());
+        }
 
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.setTitle("Upload ke Google Drive");

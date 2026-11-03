@@ -2,9 +2,12 @@ package id.ac.unjani.humas.sortirmedia.ui;
 
 import id.ac.unjani.humas.sortirmedia.model.MediaItem;
 import id.ac.unjani.humas.sortirmedia.service.FolderScanner;
+import id.ac.unjani.humas.sortirmedia.service.GoogleDriveService;
 import id.ac.unjani.humas.sortirmedia.service.MediaGrouping;
 import id.ac.unjani.humas.sortirmedia.service.SidecarService;
+import java.io.IOException;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import javafx.concurrent.Task;
@@ -13,9 +16,18 @@ import javafx.geometry.Pos;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
+import javafx.scene.control.RadioButton;
+import javafx.scene.control.Separator;
 import javafx.scene.control.SplitPane;
+import javafx.scene.control.TextInputControl;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -25,8 +37,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Tampilan utama aplikasi yang mengintegrasikan FolderTreePane, GalleryPane,
- * dan StatusBarPane, serta menghubungkan alur kerja: pemilihan folder, pemindaian
- * di latar belakang, penampilan galeri, dan pembaruan bilah status.
+ * dan StatusBarPane, serta menghubungkan alur kerja: pemilihan folder,
+ * pemindaian
+ * di latar belakang, penampilan galeri, multi-seleksi file/folder, ekspor, dan
+ * upload Google Drive.
  */
 public final class MainView {
 
@@ -53,11 +67,11 @@ public final class MainView {
     private List<MediaGrouping.MediaGroup> allGroups;
     private Path currentFolder;
 
-    private final javafx.scene.layout.HBox filterPane = new javafx.scene.layout.HBox(10);
-    private final javafx.scene.control.CheckBox[] flagChecks = new javafx.scene.control.CheckBox[5];
-    private final javafx.scene.control.CheckBox unflaggedCheck = new javafx.scene.control.CheckBox("Belum Diflag");
-    private final javafx.scene.control.RadioButton orRadio = new javafx.scene.control.RadioButton("OR");
-    private final javafx.scene.control.RadioButton andRadio = new javafx.scene.control.RadioButton("AND");
+    private final HBox filterPane = new HBox(10);
+    private final CheckBox[] flagChecks = new CheckBox[5];
+    private final CheckBox unflaggedCheck = new CheckBox("Belum Diflag");
+    private final RadioButton orRadio = new RadioButton("OR");
+    private final RadioButton andRadio = new RadioButton("AND");
 
     public MainView() {
         backBtn.setTooltip(new Tooltip("Kembali ke folder sebelumnya (Back)"));
@@ -115,6 +129,7 @@ public final class MainView {
         galleryPane.setOnItemSelected(statusBarPane::showFileInfo);
         galleryPane.setOnFolderAction(this::openFolder);
         galleryPane.setOnFolderSelected(statusBarPane::showSelectedFolderInfo);
+        galleryPane.setOnSelectionChanged(this::updateSelectionStatus);
 
         galleryPane.setOnItemAction(item -> {
             if (currentItems != null) {
@@ -134,25 +149,52 @@ public final class MainView {
 
         java.util.function.Consumer<MediaItem> saveFlagsHandler = item -> {
             if (currentFolder != null && allItems != null) {
-                id.ac.unjani.humas.sortirmedia.service.SidecarService.saveFlags(currentFolder, allItems);
+                SidecarService.saveFlags(currentFolder, allItems);
                 applyFilter();
             }
         };
         galleryPane.setOnFlagChanged(saveFlagsHandler);
         viewerPane.setOnFlagChanged(saveFlagsHandler);
+
+        // Global keyboard shortcut untuk seleksi
+        root.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (viewerPane.getView().isVisible()) {
+                return;
+            }
+            if (event.getTarget() instanceof TextInputControl) {
+                return;
+            }
+            if (new KeyCodeCombination(KeyCode.A, KeyCombination.SHORTCUT_DOWN).match(event)) {
+                galleryPane.selectAll();
+                event.consume();
+            } else if (new KeyCodeCombination(KeyCode.D, KeyCombination.SHORTCUT_DOWN).match(event)) {
+                galleryPane.deselectAll();
+                event.consume();
+            } else if (event.getCode() == KeyCode.ESCAPE) {
+                galleryPane.deselectAll();
+                event.consume();
+            }
+        });
+    }
+
+    private void updateSelectionStatus() {
+        List<Path> selectedFolders = galleryPane.getSelectedFolders();
+        List<MediaItem> selectedMedia = galleryPane.getSelectedMediaItems();
+        long totalBytes = selectedMedia.stream().mapToLong(MediaItem::getSizeBytes).sum();
+        statusBarPane.showSelectionInfo(selectedFolders.size(), selectedMedia.size(), totalBytes);
     }
 
     private void setupFilterPane() {
-        filterPane.setPadding(new javafx.geometry.Insets(10));
-        filterPane.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        filterPane.setPadding(new Insets(10));
+        filterPane.setAlignment(Pos.CENTER_LEFT);
 
-        javafx.scene.control.ToggleGroup group = new javafx.scene.control.ToggleGroup();
+        ToggleGroup group = new ToggleGroup();
         orRadio.setToggleGroup(group);
         andRadio.setToggleGroup(group);
         orRadio.setSelected(true);
 
         for (int i = 0; i < 5; i++) {
-            flagChecks[i] = new javafx.scene.control.CheckBox("Flag " + (i + 1));
+            flagChecks[i] = new CheckBox("Flag " + (i + 1));
             flagChecks[i].setOnAction(e -> applyFilter());
             filterPane.getChildren().add(flagChecks[i]);
         }
@@ -161,86 +203,160 @@ public final class MainView {
         orRadio.setOnAction(e -> applyFilter());
         andRadio.setOnAction(e -> applyFilter());
 
-        javafx.scene.control.Button resetAllBtn = new javafx.scene.control.Button("Reset Semua Flag");
+        Button resetAllBtn = new Button("Reset Semua Flag");
         resetAllBtn.setOnAction(e -> {
             if (allItems != null && currentFolder != null) {
                 allItems.forEach(MediaItem::clearFlags);
-                id.ac.unjani.humas.sortirmedia.service.SidecarService.saveFlags(currentFolder, allItems);
+                SidecarService.saveFlags(currentFolder, allItems);
                 applyFilter();
             }
         });
 
-        javafx.scene.control.Button exportBtn = new javafx.scene.control.Button("Export / Pindahkan...");
+        Button selectAllBtn = new Button("Pilih Semua");
+        selectAllBtn.setTooltip(new Tooltip("Pilih semua file dan folder (Ctrl+A)"));
+        selectAllBtn.setOnAction(e -> galleryPane.selectAll());
+
+        Button deselectAllBtn = new Button("Batal Pilih");
+        deselectAllBtn.setTooltip(new Tooltip("Batalkan semua pilihan (Ctrl+D / Esc)"));
+        deselectAllBtn.setOnAction(e -> galleryPane.deselectAll());
+
+        Button exportBtn = new Button("Export / Pindahkan...");
         exportBtn.setOnAction(e -> {
-            if (currentItems == null || currentItems.isEmpty()) {
-                showError("Tidak ada file yang bisa diexport.");
+            List<Path> selectedFolders = galleryPane.getSelectedFolders();
+            List<MediaItem> selectedMedia = galleryPane.getSelectedMediaItems();
+
+            List<MediaItem> itemsToExport = new ArrayList<>();
+            for (Path folder : selectedFolders) {
+                try {
+                    itemsToExport.addAll(FolderScanner.scan(folder));
+                } catch (IOException ex) {
+                    log.error("Gagal membaca folder untuk export: {}", folder, ex);
+                }
+            }
+            itemsToExport.addAll(selectedMedia);
+
+            // Jika tidak ada item terpilih secara eksplisit, gunakan seluruh item yang sedang tampil
+            if (itemsToExport.isEmpty()) {
+                itemsToExport = galleryPane.getVisibleMediaItems();
+            }
+
+            if (itemsToExport.isEmpty()) {
+                showError("Tidak ada file yang dipilih atau sedang ditampilkan untuk diexport.");
                 return;
             }
-            // Dapatkan item-item yang terfilter di galeri saat ini
-            List<MediaItem> currentlyShowing = galleryPane.getVisibleMediaItems();
 
-            if (currentlyShowing.isEmpty()) {
-                showError("Tidak ada file yang sedang ditampilkan (filter kosong).");
-                return;
-            }
-
-            // Map kembali ke MediaGroup
             List<MediaGrouping.MediaGroup> selectedGroups = new ArrayList<>();
-            for (MediaItem item : currentlyShowing) {
-                for (MediaGrouping.MediaGroup mediaGroup : allGroups) {
-                    if (mediaGroup.primary() == item) {
-                        selectedGroups.add(mediaGroup);
-                        break;
+            for (MediaItem item : itemsToExport) {
+                boolean found = false;
+                if (allGroups != null) {
+                    for (MediaGrouping.MediaGroup mediaGroup : allGroups) {
+                        if (mediaGroup.primary() == item || mediaGroup.members().contains(item)) {
+                            if (!selectedGroups.contains(mediaGroup)) {
+                                selectedGroups.add(mediaGroup);
+                            }
+                            found = true;
+                            break;
+                        }
                     }
+                }
+                if (!found) {
+                    selectedGroups.add(new MediaGrouping.MediaGroup(item, List.of(item)));
                 }
             }
 
             ExportDialog dialog = new ExportDialog(selectedGroups, () -> {
-                // Refresh folder setelah operasi sukses
                 openFolder(currentFolder);
             });
             dialog.show();
         });
 
-        javafx.scene.control.Button uploadDriveBtn = new javafx.scene.control.Button("Upload Google Drive...");
+        Button uploadDriveBtn = new Button("Upload Google Drive...");
         uploadDriveBtn.setOnAction(e -> {
-            if (currentItems == null || currentItems.isEmpty()) {
-                showError("Tidak ada file yang bisa diupload.");
+            List<Path> selectedFolders = galleryPane.getSelectedFolders();
+            List<MediaItem> selectedMedia = galleryPane.getSelectedMediaItems();
+
+            // 1. Validasi: hanya upload file/folder ketika diseleksi
+            if (selectedFolders.isEmpty() && selectedMedia.isEmpty()) {
+                showInfo("Silakan pilih file atau folder terlebih dahulu yang ingin diunggah ke Google Drive.\n\n"
+                        + "Tip: Gunakan shortcut Ctrl+A untuk memilih semua, atau klik file/folder yang diinginkan.");
                 return;
             }
-            List<MediaItem> currentlyShowing = galleryPane.getVisibleMediaItems();
 
-            if (currentlyShowing.isEmpty()) {
-                showError("Tidak ada file yang sedang ditampilkan (filter kosong).");
-                return;
-            }
+            List<MediaGrouping.MediaGroup> uploadGroups = new ArrayList<>();
+            String defaultActivityName = "";
+            LocalDate defaultDate = null;
 
-            List<MediaGrouping.MediaGroup> selectedGroups = new ArrayList<>();
-            for (MediaItem item : currentlyShowing) {
-                for (MediaGrouping.MediaGroup mediaGroup : allGroups) {
-                    if (mediaGroup.primary() == item) {
-                        selectedGroups.add(mediaGroup);
-                        break;
+            if (!selectedFolders.isEmpty()) {
+                // Folder diseleksi: ambil nama folder sebagai default nama kegiatan
+                Path targetFolder = selectedFolders.get(0);
+                String rawName = targetFolder.getFileName() != null ? targetFolder.getFileName().toString() : targetFolder.toString();
+                GoogleDriveService.FolderActivityInfo info = GoogleDriveService.parseFolderActivity(rawName);
+                defaultActivityName = info.activityName();
+                defaultDate = info.date();
+
+                List<MediaItem> folderItems = new ArrayList<>();
+                for (Path folder : selectedFolders) {
+                    try {
+                        folderItems.addAll(FolderScanner.scan(folder));
+                    } catch (IOException ex) {
+                        log.error("Gagal membaca file dari folder terpilih: {}", folder, ex);
                     }
+                }
+                folderItems.addAll(selectedMedia);
+
+                if (folderItems.isEmpty()) {
+                    showError("Folder yang dipilih tidak berisi file media (foto/video) yang didukung.");
+                    return;
+                }
+                uploadGroups = MediaGrouping.group(folderItems);
+
+            } else {
+                // File-file tertentu yang diseleksi: ambil nama kegiatan dari folder saat ini
+                if (currentFolder != null && currentFolder.getFileName() != null) {
+                    GoogleDriveService.FolderActivityInfo info =
+                            GoogleDriveService.parseFolderActivity(currentFolder.getFileName().toString());
+                    defaultActivityName = info.activityName();
+                    defaultDate = info.date();
+                }
+
+                for (MediaItem item : selectedMedia) {
+                    if (allGroups != null) {
+                        for (MediaGrouping.MediaGroup mediaGroup : allGroups) {
+                            if (mediaGroup.primary() == item || mediaGroup.members().contains(item)) {
+                                if (!uploadGroups.contains(mediaGroup)) {
+                                    uploadGroups.add(mediaGroup);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (uploadGroups.isEmpty()) {
+                    showError("Tidak ada file yang bisa diupload.");
+                    return;
                 }
             }
 
-            UploadDriveDialog dialog = new UploadDriveDialog(selectedGroups, () -> {
+            UploadDriveDialog dialog = new UploadDriveDialog(uploadGroups, defaultActivityName, defaultDate, () -> {
                 log.info("Upload Google Drive berhasil diselesaikan.");
             });
             dialog.show();
         });
 
         filterPane.getChildren().addAll(
-                new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+                new Separator(javafx.geometry.Orientation.VERTICAL),
                 unflaggedCheck,
-                new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+                new Separator(javafx.geometry.Orientation.VERTICAL),
                 orRadio, andRadio,
-                new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+                new Separator(javafx.geometry.Orientation.VERTICAL),
                 resetAllBtn,
-                new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+                new Separator(javafx.geometry.Orientation.VERTICAL),
+                selectAllBtn,
+                deselectAllBtn,
+                new Separator(javafx.geometry.Orientation.VERTICAL),
                 exportBtn,
-                new javafx.scene.control.Separator(javafx.geometry.Orientation.VERTICAL),
+                new Separator(javafx.geometry.Orientation.VERTICAL),
                 uploadDriveBtn);
     }
 
@@ -249,7 +365,7 @@ public final class MainView {
             return;
 
         boolean tempAnyFlag = false;
-        for (javafx.scene.control.CheckBox cb : flagChecks) {
+        for (CheckBox cb : flagChecks) {
             if (cb.isSelected())
                 tempAnyFlag = true;
         }
@@ -260,7 +376,7 @@ public final class MainView {
 
         List<MediaItem> filtered = currentItems.stream().filter(item -> {
             if (!anyFlagChecked && !unflaggedChecked)
-                return true; // No filter active
+                return true; // Tidak ada filter aktif
 
             boolean hasAnyFlag = false;
             boolean hasAllCheckedFlags = true;
@@ -299,7 +415,8 @@ public final class MainView {
     }
 
     private void openFolder(Path folder, boolean recordHistory) {
-        if (folder == null) return;
+        if (folder == null)
+            return;
 
         if (recordHistory) {
             if (historyIndex >= 0 && historyIndex < folderHistory.size() - 1) {
@@ -314,6 +431,7 @@ public final class MainView {
 
         galleryPane.clear();
         statusBarPane.clearFileInfo();
+        statusBarPane.clearSelectionInfo();
         currentPathLabel.setText("📁  " + folder.toAbsolutePath());
 
         Task<FolderScanner.ScanResult> task = FolderScanner.scanTask(folder);
@@ -335,7 +453,6 @@ public final class MainView {
             updateNavButtons(folder);
             log.info("Folder dibuka: {} ({} subfolder, {} item, {} grup)", folder, result.subfolders().size(),
                     items.size(), groups.size());
-
         });
         task.setOnFailed(e -> {
             log.error("Gagal membaca folder: {}", folder, task.getException());
@@ -355,6 +472,12 @@ public final class MainView {
 
     private void showError(String message) {
         Alert alert = new Alert(AlertType.ERROR, message);
+        alert.setHeaderText(null);
+        alert.showAndWait();
+    }
+
+    private void showInfo(String message) {
+        Alert alert = new Alert(AlertType.INFORMATION, message);
         alert.setHeaderText(null);
         alert.showAndWait();
     }

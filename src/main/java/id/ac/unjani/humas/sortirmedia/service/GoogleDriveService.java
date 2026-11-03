@@ -101,6 +101,67 @@ public class GoogleDriveService {
         return prefix + " - " + cleanName;
     }
 
+    public record FolderActivityInfo(LocalDate date, String activityName) {}
+
+    /**
+     * Mem-parsing nama folder untuk mengekstrak kemungkinan tanggal dan nama kegiatan.
+     * Mendukung format prefix YYMMDD, YYYYMMDD, YYYY-MM-DD, atau DD-MM-YYYY.
+     * Jika tidak ada tanggal, activityName diisi nama folder dan date bernilai null.
+     */
+    public static FolderActivityInfo parseFolderActivity(String folderName) {
+        if (folderName == null || folderName.isBlank()) {
+            return new FolderActivityInfo(null, "");
+        }
+        String name = folderName.trim();
+
+        // 1. Prefix YYMMDD atau YYYYMMDD (misal: 241025 - Wisuda atau 20241025_Wisuda)
+        java.util.regex.Matcher m1 = java.util.regex.Pattern.compile("^(\\d{6}|\\d{8})[\\s\\-_]+(.*)$").matcher(name);
+        if (m1.matches()) {
+            String dateStr = m1.group(1);
+            String act = m1.group(2).trim();
+            LocalDate d = null;
+            try {
+                if (dateStr.length() == 6) {
+                    d = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyMMdd"));
+                } else {
+                    d = LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("yyyyMMdd"));
+                }
+            } catch (Exception ignored) {}
+            if (d != null) {
+                return new FolderActivityInfo(d, act);
+            }
+        }
+
+        // 2. Prefix YYYY-MM-DD (misal: 2026-11-03 - Wisuda)
+        java.util.regex.Matcher m2 = java.util.regex.Pattern.compile("^(\\d{4})[-_. ](\\d{1,2})[-_. ](\\d{1,2})[\\s\\-_]*(.*)$").matcher(name);
+        if (m2.matches()) {
+            try {
+                int y = Integer.parseInt(m2.group(1));
+                int m = Integer.parseInt(m2.group(2));
+                int day = Integer.parseInt(m2.group(3));
+                LocalDate d = LocalDate.of(y, m, day);
+                String act = m2.group(4).trim().replaceFirst("^[\\s\\-_]+", "");
+                return new FolderActivityInfo(d, act);
+            } catch (Exception ignored) {}
+        }
+
+        // 3. Prefix DD-MM-YYYY (misal: 03-11-2026 - Wisuda)
+        java.util.regex.Matcher m3 = java.util.regex.Pattern.compile("^(\\d{1,2})[-_. ](\\d{1,2})[-_. ](\\d{4})[\\s\\-_]*(.*)$").matcher(name);
+        if (m3.matches()) {
+            try {
+                int day = Integer.parseInt(m3.group(1));
+                int m = Integer.parseInt(m3.group(2));
+                int y = Integer.parseInt(m3.group(3));
+                LocalDate d = LocalDate.of(y, m, day);
+                String act = m3.group(4).trim().replaceFirst("^[\\s\\-_]+", "");
+                return new FolderActivityInfo(d, act);
+            } catch (Exception ignored) {}
+        }
+
+        // Default: seluruh nama folder sebagai nama kegiatan
+        return new FolderActivityInfo(null, name);
+    }
+
     /**
      * Memeriksa keberadaan file credentials.json / client_secret.json.
      */

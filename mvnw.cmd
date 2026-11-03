@@ -58,17 +58,19 @@ set ERROR_CODE=0
 @setlocal
 
 @REM ==== START VALIDATION ====
-if not "%JAVA_HOME%" == "" goto OkJHome
+if not "%JAVA_HOME%" == "" if exist "%JAVA_HOME%\bin\java.exe" goto init
 
-echo.
-echo Error: JAVA_HOME not found in your environment. >&2
-echo Please set the JAVA_HOME variable in your environment to match the >&2
-echo location of your Java installation. >&2
-echo.
-goto error
+@REM Fallback jika JAVA_HOME menunjuk folder yang tidak ada
+if exist "C:\Program Files\Eclipse Adoptium\jdk-25.0.4.7-hotspot\bin\java.exe" (
+    set "JAVA_HOME=C:\Program Files\Eclipse Adoptium\jdk-25.0.4.7-hotspot"
+    goto init
+)
 
-:OkJHome
-if exist "%JAVA_HOME%\bin\java.exe" goto init
+for %%%%X in (java.exe) do (set FOUND_JAVA=%%%%~$PATH:X)
+if not "%FOUND_JAVA%" == "" (
+    for %%%%F in ("%FOUND_JAVA%\..\..") do set "JAVA_HOME=%%%%~fF"
+    if exist "%JAVA_HOME%\bin\java.exe" goto init
+)
 
 echo.
 echo Error: JAVA_HOME is set to an invalid directory. >&2
@@ -77,7 +79,6 @@ echo Please set the JAVA_HOME variable in your environment to match the >&2
 echo location of your Java installation. >&2
 echo.
 goto error
-
 @REM ==== END VALIDATION ====
 
 :init

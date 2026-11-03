@@ -10,19 +10,25 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 
 /**
- * Bilah status di bagian bawah jendela: menampilkan informasi folder yang sedang dibuka (kiri)
- * dan detail file media yang sedang dipilih (kanan).
+ * Bilah status di bagian bawah jendela: menampilkan informasi folder yang sedang dibuka (kiri),
+ * status seleksi item (tengah), dan detail file media yang sedang dipilih (kanan).
  */
 public final class StatusBarPane {
 
     private final Label folderInfoLabel = new Label("Belum ada folder dipilih");
+    private final Label selectionInfoLabel = new Label("");
     private final Label fileInfoLabel = new Label("");
     private final HBox root;
 
     public StatusBarPane() {
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
-        root = new HBox(10, folderInfoLabel, spacer, fileInfoLabel);
+        Region spacer1 = new Region();
+        HBox.setHgrow(spacer1, Priority.ALWAYS);
+        Region spacer2 = new Region();
+        HBox.setHgrow(spacer2, Priority.ALWAYS);
+
+        selectionInfoLabel.setStyle("-fx-font-weight: bold; -fx-text-fill: #1976D2; -fx-padding: 0 8 0 8;");
+
+        root = new HBox(10, folderInfoLabel, spacer1, selectionInfoLabel, spacer2, fileInfoLabel);
         root.setPadding(new Insets(6, 12, 6, 12));
         root.setStyle("-fx-border-color: -fx-box-border transparent transparent transparent; "
                 + "-fx-border-width: 1 0 0 0;");
@@ -59,6 +65,31 @@ public final class StatusBarPane {
             sb.append("  •  ").append(formatDuration(item.getDurationMillis()));
         }
         fileInfoLabel.setText(sb.toString());
+    }
+
+    public void showSelectionInfo(int folderCount, int fileCount, long totalBytes) {
+        if (folderCount == 0 && fileCount == 0) {
+            selectionInfoLabel.setText("");
+            return;
+        }
+        StringBuilder sb = new StringBuilder("Terpilih: ");
+        if (folderCount > 0) {
+            sb.append(folderCount).append(" folder");
+        }
+        if (fileCount > 0) {
+            if (folderCount > 0) {
+                sb.append(", ");
+            }
+            sb.append(fileCount).append(" file");
+            if (totalBytes > 0) {
+                sb.append(" (").append(formatSize(totalBytes)).append(")");
+            }
+        }
+        selectionInfoLabel.setText(sb.toString());
+    }
+
+    public void clearSelectionInfo() {
+        selectionInfoLabel.setText("");
     }
 
     public void clearFileInfo() { fileInfoLabel.setText(""); }
