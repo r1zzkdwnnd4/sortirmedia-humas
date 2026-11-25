@@ -1,16 +1,13 @@
 package id.ac.unjani.humas.sortirmedia.service;
 
 import id.ac.unjani.humas.sortirmedia.model.MediaItem;
-import id.ac.unjani.humas.sortirmedia.model.MediaType;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
- * Mengelompokkan file RAW dan JPEG yang memiliki nama dasar sama (mis.
- * DSC_0012.ARW dan DSC_0012.JPG) sebagai satu grup media. Logika murni,
- * tanpa operasi I/O langsung, sehingga mudah diuji secara modular.
+ * Membungkus daftar {@link MediaItem} menjadi daftar {@link MediaGroup} individual
+ * sehingga file RAW dan JPEG (termasuk yang memiliki nama dasar sama seperti
+ * DSC_0012.ARW dan DSC_0012.JPG) tetap tampil bersandingan di galeri.
  */
 public final class MediaGrouping {
 
@@ -18,45 +15,24 @@ public final class MediaGrouping {
     }
 
     /**
-     * Mengelompokkan item berdasarkan nama dasar (nama file tanpa ekstensi, huruf
-     * kecil).
+     * Menampilkan setiap item media secara individual agar file RAW dan JPEG
+     * dengan nama dasar yang sama tetap tampil bersandingan di galeri.
      */
     public static List<MediaGroup> group(List<MediaItem> items) {
-        Map<String, List<MediaItem>> byBaseName = new LinkedHashMap<>();
+        List<MediaGroup> groups = new ArrayList<>(items.size());
         for (MediaItem item : items) {
-            byBaseName.computeIfAbsent(baseName(item), k -> new ArrayList<>()).add(item);
-        }
-
-        List<MediaGroup> groups = new ArrayList<>();
-        for (List<MediaItem> members : byBaseName.values()) {
-            groups.add(new MediaGroup(primaryOf(members), members));
+            groups.add(new MediaGroup(item, List.of(item)));
         }
         return groups;
     }
 
     /**
-     * Nama file tanpa ekstensi, huruf kecil, dipakai sebagai kunci pengelompokan.
+     * Nama file tanpa ekstensi, huruf kecil.
      */
     public static String baseName(MediaItem item) {
         String name = item.getFileName();
         int dot = name.lastIndexOf('.');
         return (dot < 0 ? name : name.substring(0, dot)).toLowerCase();
-    }
-
-    /** RAW diutamakan sebagai thumbnail utama grup, lalu PHOTO, lalu VIDEO. */
-    private static MediaItem primaryOf(List<MediaItem> members) {
-        return members.stream()
-                .min((a, b) -> rank(a.getType()) - rank(b.getType()))
-                .orElseThrow();
-    }
-
-    private static int rank(MediaType type) {
-        return switch (type) {
-            case RAW -> 0;
-            case PHOTO -> 1;
-            case VIDEO -> 2;
-            case UNKNOWN -> 3;
-        };
     }
 
     /**

@@ -6,11 +6,6 @@ import java.util.Objects;
 
 /**
  * Representasi satu file media di galeri.
- *
- * <p>Instance ini dibuat oleh {@code FolderScanner} saat folder dibaca. Field resolusi
- * dan durasi bernilai {@code -1} sampai informasinya berhasil dibaca oleh reader metadata.
- *
- * <p>Field {@code flags} adalah bitmask 5 bit untuk flag 1-5 (bit 0 = flag 1).
  */
 public final class MediaItem {
 
@@ -35,13 +30,33 @@ public final class MediaItem {
         this.lastModified = Objects.requireNonNull(lastModified, "lastModified");
     }
 
-    public Path getPath() { return path; }
-    public String getFileName() { return fileName; }
-    public MediaType getType() { return type; }
-    public long getSizeBytes() { return sizeBytes; }
-    public Instant getLastModified() { return lastModified; }
-    public int getWidth() { return width; }
-    public int getHeight() { return height; }
+    public Path getPath() {
+        return path;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public MediaType getType() {
+        return type;
+    }
+
+    public long getSizeBytes() {
+        return sizeBytes;
+    }
+
+    public Instant getLastModified() {
+        return lastModified;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
 
     public void setResolution(int width, int height) {
         this.width = width;
@@ -52,8 +67,13 @@ public final class MediaItem {
         return width > 0 && height > 0;
     }
 
-    public long getDurationMillis() { return durationMillis; }
-    public void setDurationMillis(long durationMillis) { this.durationMillis = durationMillis; }
+    public long getDurationMillis() {
+        return durationMillis;
+    }
+
+    public void setDurationMillis(long durationMillis) {
+        this.durationMillis = durationMillis;
+    }
 
     /** Ekstensi file dalam huruf kecil, tanpa titik. Contoh: "jpg", "arw". */
     public String getExtension() {
@@ -62,10 +82,14 @@ public final class MediaItem {
         return dot < 0 ? "" : name.substring(dot + 1).toLowerCase();
     }
 
-    public int getFlags() { return flags; }
+    public int getFlags() {
+        return flags;
+    }
 
     /** Dipakai oleh layanan sidecar saat memuat ulang flag dari disk. */
-    public void setFlags(int flags) { this.flags = flags; }
+    public void setFlags(int flags) {
+        this.flags = flags;
+    }
 
     public void toggleFlag(int flagIndex) {
         if (flagIndex >= 0 && flagIndex < 5) {
@@ -76,20 +100,24 @@ public final class MediaItem {
     public void clearFlags() {
         this.flags = 0;
     }
-    
+
     public boolean hasFlag(int flagIndex) {
         return (this.flags & (1 << flagIndex)) != 0;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof MediaItem other)) return false;
+        if (this == o)
+            return true;
+        if (!(o instanceof MediaItem other))
+            return false;
         return path.equals(other.path);
     }
 
     @Override
-    public int hashCode() { return path.hashCode(); }
+    public int hashCode() {
+        return path.hashCode();
+    }
 
     @Override
     public String toString() {

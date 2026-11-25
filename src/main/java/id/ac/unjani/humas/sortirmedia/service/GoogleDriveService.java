@@ -291,21 +291,43 @@ public class GoogleDriveService {
      * Melakukan login OAuth2 jika belum ada token, atau mengambil credential yang ada.
      */
     public Credential authorize() throws Exception {
+        return authorize(false);
+    }
+
+    /**
+     * Melakukan login OAuth2. Jika {@code forceSelectAccount} bernilai {@code true},
+     * token lama akan dihapus terlebih dahulu dan browser akan selalu menampilkan
+     * halaman pemilihan akun Google (Account Chooser).
+     */
+    public Credential authorize(boolean forceSelectAccount) throws Exception {
+        if (forceSelectAccount) {
+            logout();
+        }
+
         NetHttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
         GoogleAuthorizationCodeFlow flow = createFlow(httpTransport);
         Credential credential = flow.loadCredential("user");
 
-        if (credential != null && credential.getRefreshToken() != null) {
+        if (!forceSelectAccount && credential != null
+                && (credential.getRefreshToken() != null || credential.getAccessToken() != null)) {
             log.info("Menggunakan token tersimpan di {}", TOKENS_DIR);
             return credential;
         }
 
         log.info("Memulai OAuth2 authorization flow melalui browser...");
         LocalServerReceiver receiver = new LocalServerReceiver.Builder()
-                .setPort(8888)
+                .setPort(-1)
                 .setCallbackPath("/Callback")
                 .build();
-        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        AuthorizationCodeInstalledApp app = new AuthorizationCodeInstalledApp(flow, receiver) {
+            @Override
+            protected void onAuthorization(
+                    com.google.api.client.auth.oauth2.AuthorizationCodeRequestUrl authorizationUrl) throws IOException {
+                authorizationUrl.set("prompt", "select_account consent");
+                super.onAuthorization(authorizationUrl);
+            }
+        };
+        return app.authorize("user");
     }
 
     /**
@@ -501,6 +523,42 @@ public class GoogleDriveService {
                 .setFields("id, name")
                 .execute();
         log.info("Berhasil membuat folder kegiatan '{}' (ID: {}) di bawah folder bulan", activityFolderName, created.getId());
+        return created.getId();
+    }
+
+    /**
+     * Mencari atau membuat subfolder (misal "Folder B" atau "Folder C") di bawah parentFolderId.
+     */
+    public String getOrCreateSubfolder(Drive drive, String parentFolderId, String subfolderName) throws IOException {
+        String cleanName = subfolderName == null ? "" : subfolderName.trim();
+        if (cleanName.isEmpty()) {
+            return parentFolderId;
+        }
+
+        String query = "mimeType = 'application/vnd.google-apps.folder' and name = '"
+                + escapeQuery(cleanName) + "' and '" + parentFolderId + "' in parents and trashed = false";
+        FileList result = drive.files().list()
+                .setQ(query)
+                .setSpaces("drive")
+                .setFields("files(id, name)")
+                .setPageSize(5)
+                .execute();
+
+        if (result.getFiles() != null && !result.getFiles().isEmpty()) {
+            String folderId = result.getFiles().get(0).getId();
+            log.info("Ditemukan subfolder '{}' (ID: {}) di bawah {}", cleanName, folderId, parentFolderId);
+            return folderId;
+        }
+
+        com.google.api.services.drive.model.File folderMetadata = new com.google.api.services.drive.model.File();
+        folderMetadata.setName(cleanName);
+        folderMetadata.setMimeType("application/vnd.google-apps.folder");
+        folderMetadata.setParents(Collections.singletonList(parentFolderId));
+
+        com.google.api.services.drive.model.File created = drive.files().create(folderMetadata)
+                .setFields("id, name")
+                .execute();
+        log.info("Berhasil membuat subfolder '{}' (ID: {}) di bawah {}", cleanName, created.getId(), parentFolderId);
         return created.getId();
     }
 

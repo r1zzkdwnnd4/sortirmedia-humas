@@ -285,27 +285,45 @@ public final class MainView {
             List<MediaGrouping.MediaGroup> uploadGroups = new ArrayList<>();
             String defaultActivityName = "";
             LocalDate defaultDate = null;
+            Path baseUploadFolder = currentFolder;
 
             if (!selectedFolders.isEmpty()) {
-                // Folder diseleksi: ambil nama folder sebagai default nama kegiatan
-                Path targetFolder = selectedFolders.get(0);
-                String rawName = targetFolder.getFileName() != null ? targetFolder.getFileName().toString() : targetFolder.toString();
-                GoogleDriveService.FolderActivityInfo info = GoogleDriveService.parseFolderActivity(rawName);
-                defaultActivityName = info.activityName();
-                defaultDate = info.date();
+                if (selectedFolders.size() == 1 && selectedMedia.isEmpty()) {
+                    // 1 folder dipilih: jadikan folder tersebut sebagai akar (Folder A)
+                    Path targetFolder = selectedFolders.get(0);
+                    baseUploadFolder = targetFolder;
+                    String rawName = targetFolder.getFileName() != null
+                            ? targetFolder.getFileName().toString()
+                            : targetFolder.toString();
+                    GoogleDriveService.FolderActivityInfo info = GoogleDriveService.parseFolderActivity(rawName);
+                    defaultActivityName = info.activityName();
+                    defaultDate = info.date();
+                } else {
+                    // Lebih dari 1 folder (atau folder + file) dipilih: gunakan currentFolder sebagai akar
+                    Path nameSource = (currentFolder != null && currentFolder.getFileName() != null)
+                            ? currentFolder
+                            : selectedFolders.get(0);
+                    String rawName = nameSource.getFileName() != null
+                            ? nameSource.getFileName().toString()
+                            : nameSource.toString();
+                    GoogleDriveService.FolderActivityInfo info = GoogleDriveService.parseFolderActivity(rawName);
+                    defaultActivityName = info.activityName();
+                    defaultDate = info.date();
+                    baseUploadFolder = currentFolder != null ? currentFolder : selectedFolders.get(0).getParent();
+                }
 
                 List<MediaItem> folderItems = new ArrayList<>();
                 for (Path folder : selectedFolders) {
                     try {
-                        folderItems.addAll(FolderScanner.scan(folder));
+                        folderItems.addAll(FolderScanner.scanRecursive(folder));
                     } catch (IOException ex) {
-                        log.error("Gagal membaca file dari folder terpilih: {}", folder, ex);
+                        log.error("Gagal membaca file secara rekursif dari folder terpilih: {}", folder, ex);
                     }
                 }
                 folderItems.addAll(selectedMedia);
 
                 if (folderItems.isEmpty()) {
-                    showError("Folder yang dipilih tidak berisi file media (foto/video) yang didukung.");
+                    showError("Folder yang dipilih (beserta seluruh subfolder di dalamnya) tidak berisi file media (foto/RAW/video) yang didukung.");
                     return;
                 }
                 uploadGroups = MediaGrouping.group(folderItems);
@@ -338,9 +356,12 @@ public final class MainView {
                 }
             }
 
-            UploadDriveDialog dialog = new UploadDriveDialog(uploadGroups, defaultActivityName, defaultDate, () -> {
-                log.info("Upload Google Drive berhasil diselesaikan.");
-            });
+            UploadDriveDialog dialog = new UploadDriveDialog(
+                    uploadGroups,
+                    baseUploadFolder,
+                    defaultActivityName,
+                    defaultDate,
+                    () -> log.info("Upload Google Drive berhasil diselesaikan."));
             dialog.show();
         });
 

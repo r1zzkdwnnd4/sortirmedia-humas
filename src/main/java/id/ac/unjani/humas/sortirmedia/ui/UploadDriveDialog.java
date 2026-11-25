@@ -9,7 +9,11 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -49,6 +53,7 @@ public class UploadDriveDialog {
 
     private final Stage stage = new Stage();
     private final List<MediaGrouping.MediaGroup> groups;
+    private final Path baseFolder;
     private final Runnable onSuccess;
     private final GoogleDriveService driveService = GoogleDriveService.getInstance();
 
@@ -80,11 +85,21 @@ public class UploadDriveDialog {
     private Task<Void> currentUploadTask;
 
     public UploadDriveDialog(List<MediaGrouping.MediaGroup> groups, Runnable onSuccess) {
-        this(groups, "", null, onSuccess);
+        this(groups, null, "", null, onSuccess);
     }
 
     public UploadDriveDialog(List<MediaGrouping.MediaGroup> groups, String defaultActivityName, LocalDate defaultDate, Runnable onSuccess) {
+        this(groups, null, defaultActivityName, defaultDate, onSuccess);
+    }
+
+    public UploadDriveDialog(
+            List<MediaGrouping.MediaGroup> groups,
+            Path baseFolder,
+            String defaultActivityName,
+            LocalDate defaultDate,
+            Runnable onSuccess) {
         this.groups = groups;
+        this.baseFolder = baseFolder != null ? baseFolder.toAbsolutePath().normalize() : null;
         this.onSuccess = onSuccess;
 
         if (defaultDate != null) {
@@ -234,13 +249,37 @@ public class UploadDriveDialog {
     private void updateFileSummary() {
         List<Path> files = collectFilesToUpload();
         long totalBytes = 0;
+        Set<Path> relativeDirs = new HashSet<>();
         for (Path p : files) {
             try {
                 totalBytes += java.nio.file.Files.size(p);
             } catch (Exception ignored) {}
+            Path relDir = getRelativeSubfolderPath(p);
+            if (relDir != null && relDir.getNameCount() > 0 && !relDir.toString().isEmpty()) {
+                relativeDirs.add(relDir);
+            }
         }
         double mb = totalBytes / (1024.0 * 1024.0);
-        fileSummaryLabel.setText(String.format("%d file terpilih (Total: %.1f MB)", files.size(), mb));
+        if (!relativeDirs.isEmpty()) {
+            fileSummaryLabel.setText(String.format(
+                    "%d file terpilih di %d subfolder (Total: %.1f MB)",
+                    files.size(), relativeDirs.size(), mb));
+        } else {
+            fileSummaryLabel.setText(String.format("%d file terpilih (Total: %.1f MB)", files.size(), mb));
+        }
+    }
+
+    private Path getRelativeSubfolderPath(Path filePath) {
+        if (baseFolder == null || filePath == null) {
+            return null;
+        }
+        Path normalizedParent = filePath.toAbsolutePath().normalize().getParent();
+        if (normalizedParent != null
+                && normalizedParent.startsWith(baseFolder)
+                && !normalizedParent.equals(baseFolder)) {
+            return baseFolder.relativize(normalizedParent);
+        }
+        return null;
     }
 
     private List<Path> collectFilesToUpload() {
@@ -296,7 +335,7 @@ public class UploadDriveDialog {
 
         Thread thread = new Thread(() -> {
             try {
-                driveService.authorize();
+                driveService.authorize(true);
                 String email = driveService.getUserAccountEmail();
                 Platform.runLater(() -> {
                     accountStatusLabel.setText(email != null ? "Login: " + email : "Berhasil login!");
@@ -409,7 +448,8 @@ public class UploadDriveDialog {
 
                 if (isCancelled()) return null;
 
-                // 4. Upload file-file dengan Resumable Upload dan Retry
+                // 5. Upload file-file dengan mempertahankan struktur subfolder, Resumable Upload, dan Retry
+                Map<String, String> remoteSubfolderCache = new HashMap<>();
                 int totalCount = filesToUpload.size();
                 for (int i = 0; i < totalCount; i++) {
                     if (isCancelled()) {
@@ -421,19 +461,50 @@ public class UploadDriveDialog {
                     String fileName = path.getFileName().toString();
                     final int fileIndex = i + 1;
 
+                    // Tentukan target folder di Google Drive (buat subfolder bertingkat bila ada)
+                    String targetParentId = actFolderId;
+                    Path relSubfolder = getRelativeSubfolderPath(path);
+                    String displayPath = fileName;
+                    if (relSubfolder != null && relSubfolder.getNameCount() > 0) {
+                        StringBuilder keyBuilder = new StringBuilder();
+                        for (Path segment : relSubfolder) {
+                            String segName = segment.toString();
+                            if (segName.isEmpty()) {
+                                continue;
+                            }
+                            if (keyBuilder.length() > 0) {
+                                keyBuilder.append('/');
+                            }
+                            keyBuilder.append(segName);
+                            String currentRelKey = keyBuilder.toString();
+
+                            String cachedId = remoteSubfolderCache.get(currentRelKey);
+                            if (cachedId != null) {
+                                targetParentId = cachedId;
+                            } else {
+                                appendLogAsync("Mencari/membuat subfolder: " + currentRelKey + "...");
+                                String subId = driveService.getOrCreateSubfolder(drive, targetParentId, segName);
+                                remoteSubfolderCache.put(currentRelKey, subId);
+                                targetParentId = subId;
+                            }
+                        }
+                        displayPath = keyBuilder + "/" + fileName;
+                    }
+
+                    final String displayFileName = displayPath;
                     Platform.runLater(() -> {
                         totalProgressBar.setProgress((double) fileIndex / totalCount);
                         totalProgressLabel.setText(String.format("Total: File %d dari %d (%.0f%%)", 
                                 fileIndex, totalCount, ((double) fileIndex / totalCount) * 100));
                         fileProgressBar.setProgress(0);
-                        fileProgressLabel.setText("Mengunggah: " + fileName + " (0%)");
+                        fileProgressLabel.setText("Mengunggah: " + displayFileName + " (0%)");
                     });
 
-                    appendLogAsync(String.format("[%d/%d] Mengunggah: %s...", fileIndex, totalCount, fileName));
+                    appendLogAsync(String.format("[%d/%d] Mengunggah: %s...", fileIndex, totalCount, displayFileName));
 
                     driveService.uploadFileWithRetry(
                             drive,
-                            actFolderId,
+                            targetParentId,
                             path,
                             new GoogleDriveService.UploadProgressListener() {
                                 @Override
@@ -443,7 +514,7 @@ public class UploadDriveDialog {
                                         double mbUp = bytesUploaded / (1024.0 * 1024.0);
                                         double mbTot = totalBytes / (1024.0 * 1024.0);
                                         fileProgressLabel.setText(String.format("Mengunggah: %s (%.1f / %.1f MB - %.0f%%)", 
-                                                name, mbUp, mbTot, progressFraction * 100));
+                                                displayFileName, mbUp, mbTot, progressFraction * 100));
                                     });
                                 }
 
@@ -455,7 +526,7 @@ public class UploadDriveDialog {
                             4 // Maksimal 4 kali retry
                     );
 
-                    appendLogAsync(String.format("[%d/%d] Berhasil diunggah: %s", fileIndex, totalCount, fileName));
+                    appendLogAsync(String.format("[%d/%d] Berhasil diunggah: %s", fileIndex, totalCount, displayFileName));
                 }
 
                 appendLogAsync("Semua file (" + totalCount + ") berhasil diunggah ke folder: " + actFolderName);

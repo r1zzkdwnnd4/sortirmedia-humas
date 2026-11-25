@@ -9,15 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Mencari lokasi executable eksternal (ffmpeg, ffprobe, exiftool):
- * mencari terlebih dahulu di folder tools/ di samping direktori aplikasi,
- * kemudian fallback ke PATH sistem operasi.
- *
- * <p>
- * Mengembalikan Optional.empty() jika tool tidak ditemukan sehingga pemanggil
- * dapat menampilkan placeholder secara aman tanpa crash.
- */
 public final class ExternalTools {
 
     private static final Logger log = LoggerFactory.getLogger(ExternalTools.class);

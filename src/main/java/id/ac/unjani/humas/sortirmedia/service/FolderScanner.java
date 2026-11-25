@@ -77,10 +77,35 @@ public final class FolderScanner {
     }
 
     /**
-     * Scan sinkron (hanya file media); dipertahankan untuk kompatibilitas.
+     * Scan sinkron (hanya file media di level pertama); dipertahankan untuk kompatibilitas.
      */
     public static List<MediaItem> scan(Path folder) throws IOException {
         return scanFolder(folder).mediaItems();
+    }
+
+    /**
+     * Scan rekursif untuk membaca seluruh file media di dalam folder beserta
+     * seluruh subfolder di dalamnya hingga level terdalam.
+     */
+    public static List<MediaItem> scanRecursive(Path rootFolder) throws IOException {
+        List<MediaItem> allMedia = new ArrayList<>();
+        scanRecursiveInternal(rootFolder, allMedia);
+        return allMedia;
+    }
+
+    private static void scanRecursiveInternal(Path folder, List<MediaItem> accumulator) throws IOException {
+        ScanResult result = scanFolder(folder);
+        accumulator.addAll(result.mediaItems());
+        for (Path sub : result.subfolders()) {
+            if (Files.isSymbolicLink(sub)) {
+                continue;
+            }
+            try {
+                scanRecursiveInternal(sub, accumulator);
+            } catch (IOException e) {
+                log.warn("Melewati subfolder yang gagal dibaca secara rekursif: {}", sub, e);
+            }
+        }
     }
 
     /** Task siap pakai untuk dijalankan di executor/thread background dari UI. */

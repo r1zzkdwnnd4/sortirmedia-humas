@@ -11,6 +11,8 @@ import java.util.Set;
 public final class MediaTypeResolver {
 
     private static final Set<String> PHOTO_EXT = Set.of("jpg", "jpeg", "png");
+    private static final Set<String> RAW_EXT =
+            Set.of("cr2", "cr3", "nef", "arw", "dng", "orf", "rw2", "raf");
     private static final Set<String> VIDEO_EXT = Set.of("mp4", "mov", "mkv", "avi", "m4v");
 
     private MediaTypeResolver() {}
@@ -22,6 +24,7 @@ public final class MediaTypeResolver {
     public static MediaType resolve(String extensionLowerCase) {
         String ext = extensionLowerCase == null ? "" : extensionLowerCase.toLowerCase();
         if (PHOTO_EXT.contains(ext)) return MediaType.PHOTO;
+        if (RAW_EXT.contains(ext)) return MediaType.RAW;
         if (VIDEO_EXT.contains(ext)) return MediaType.VIDEO;
         return MediaType.UNKNOWN;
     }

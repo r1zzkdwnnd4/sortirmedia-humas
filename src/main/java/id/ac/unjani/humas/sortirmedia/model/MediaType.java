@@ -5,6 +5,5 @@ public enum MediaType {
     PHOTO,
     RAW,
     VIDEO,
-    /** Ekstensi tidak dikenali; file jenis ini diabaikan oleh FolderScanner. */
     UNKNOWN
 }
